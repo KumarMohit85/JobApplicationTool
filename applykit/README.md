@@ -768,11 +768,14 @@ npm run build    # production build
 | **F1** Profile storage + Options UI | Done |
 | **F2** Skills library | Done |
 | **F3** Resume library (PDF + descriptions) | Done |
-| **F4** Page / job context extraction | Next |
-| **F5–F17** | Pending |
+| **F4** Page / job context extraction | Done |
+| **F5** Skill matching (side panel) | Done |
+| **F6** Resume matching (side panel) | Done |
+| **F7** Template generation | Next |
+| **F8–F17** | Pending |
 
 ---
 
 ## Next step
 
-Continue MVP **one feature at a time**. Next up: **F4 — Page / job context extraction** (LinkedIn job page + side panel).
+Continue MVP **one feature at a time**. Next up: **F7 — Template generation** (cover letter + email snippets in side panel).

@@ -1,7 +1,12 @@
-import { Button } from '@/components/ui';
+import { useState } from 'react';
+import { Button, StatusBanner } from '@/components/ui';
+import { fetchJobContextFromActiveTab } from '@/lib/tab-messages';
 import '@/assets/tailwind.css';
 
 export default function PopupApp() {
+  const [scanMessage, setScanMessage] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+
   const openOptions = () => {
     void chrome.runtime.openOptionsPage();
   };
@@ -13,6 +18,20 @@ export default function PopupApp() {
     }
   };
 
+  const scanPage = async () => {
+    setScanning(true);
+    setScanMessage(null);
+    const result = await fetchJobContextFromActiveTab();
+    setScanning(false);
+    if (result.context) {
+      const parts = [result.context.title, result.context.company].filter(Boolean);
+      setScanMessage(parts.length > 0 ? `Found: ${parts.join(' at ')}` : 'Job context saved.');
+      await openSidePanel();
+    } else {
+      setScanMessage(result.error ?? 'No job details found on this page.');
+    }
+  };
+
   return (
     <div className="w-72 space-y-4 p-4">
       <div>
@@ -20,15 +39,22 @@ export default function PopupApp() {
         <p className="text-xs text-slate-600">Job application assistant</p>
       </div>
 
+      {scanMessage ? <StatusBanner message={scanMessage} tone="info" /> : null}
+
       <div className="space-y-2">
-        <Button onClick={() => void openSidePanel()}>Open side panel</Button>
+        <Button disabled={scanning} onClick={() => void scanPage()}>
+          {scanning ? 'Scanning…' : 'Scan job page'}
+        </Button>
+        <Button variant="secondary" onClick={() => void openSidePanel()}>
+          Open side panel
+        </Button>
         <Button variant="secondary" onClick={openOptions}>
           Profile settings
         </Button>
       </div>
 
       <p className="text-xs text-slate-500">
-        Set up your profile first. Autofill and job tools are added in upcoming features.
+        Works on LinkedIn, Greenhouse, Lever, and most job posting pages.
       </p>
     </div>
   );

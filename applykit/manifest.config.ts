@@ -6,7 +6,7 @@ const manifest: ManifestV3Export = {
   description:
     'Apply to jobs, send tailored emails, and autofill applications with minimal clicks.',
   version: '0.1.0',
-  permissions: ['storage', 'activeTab', 'sidePanel', 'scripting', 'downloads'],
+  permissions: ['storage', 'activeTab', 'sidePanel', 'scripting', 'downloads', 'tabs'],
   host_permissions: [
     'https://www.linkedin.com/*',
     'https://boards.greenhouse.io/*',
