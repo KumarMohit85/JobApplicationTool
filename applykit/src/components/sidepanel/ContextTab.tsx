@@ -1,21 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import type { JobContext } from '@/types/job';
-import type { Profile } from '@/types/profile';
-import type { ResumeVariant } from '@/types/resume';
-import { matchResume, matchSkills } from '@/lib/matcher';
-import { listResumes } from '@/lib/resumes';
-import { GeneratedContentPanel } from '@/components/sidepanel/GeneratedContentPanel';
-import { AutofillActions } from '@/components/sidepanel/AutofillActions';
 import { Button, StatusBanner } from '@/components/ui';
-
-type JobContextPanelProps = {
-  context: JobContext | null;
-  loading: boolean;
-  error: string | null;
-  profile: Profile;
-  onRefresh: () => Promise<void>;
-  onAppendSelection: () => Promise<boolean>;
-};
 
 const SOURCE_LABELS: Record<JobContext['source'], string> = {
   linkedin: 'LinkedIn',
@@ -25,30 +10,22 @@ const SOURCE_LABELS: Record<JobContext['source'], string> = {
   manual: 'Manual selection',
 };
 
-export function JobContextPanel({
+type ContextTabProps = {
+  context: JobContext | null;
+  loading: boolean;
+  error: string | null;
+  onRefresh: () => Promise<void>;
+  onAppendSelection: () => Promise<boolean>;
+};
+
+export function ContextTab({
   context,
   loading,
   error,
-  profile,
   onRefresh,
   onAppendSelection,
-}: JobContextPanelProps) {
-  const [resumes, setResumes] = useState<ResumeVariant[]>([]);
+}: ContextTabProps) {
   const [expanded, setExpanded] = useState(false);
-
-  useEffect(() => {
-    void listResumes().then(setResumes);
-  }, []);
-
-  const skillMatch = useMemo(() => {
-    if (!context?.description || profile.skills.length === 0) return null;
-    return matchSkills(profile.skills, context.description);
-  }, [context?.description, profile.skills]);
-
-  const resumeMatch = useMemo(() => {
-    if (!context?.description || resumes.length === 0) return null;
-    return matchResume(resumes, context.description, context.title);
-  }, [context, resumes]);
 
   const descriptionPreview =
     context?.description && context.description.length > 400 && !expanded
@@ -114,35 +91,6 @@ export function JobContextPanel({
       ) : !loading && !error ? (
         <p className="text-sm text-slate-500">Open a job posting, then click Scan page.</p>
       ) : null}
-
-      {skillMatch && context?.description ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm">
-          <p className="font-medium text-slate-900">Skill match — {skillMatch.score}%</p>
-          {skillMatch.matched.length > 0 ? (
-            <p className="mt-1 text-green-800">
-              Matched: {skillMatch.matched.map((m) => m.skill.name).join(', ')}
-            </p>
-          ) : (
-            <p className="mt-1 text-amber-700">No profile skills matched this description.</p>
-          )}
-          {skillMatch.missing.length > 0 ? (
-            <p className="mt-1 text-slate-600">Gaps: {skillMatch.missing.join(', ')}</p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {resumeMatch && context?.description ? (
-        <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-3 text-sm">
-          <p className="font-medium text-indigo-900">Recommended resume</p>
-          <p className="text-indigo-800">
-            {resumeMatch.resume.name} ({resumeMatch.confidence}% match)
-          </p>
-        </div>
-      ) : null}
-
-      {profile.personal.fullName ? <AutofillActions context={context} profile={profile} /> : null}
-
-      <GeneratedContentPanel context={context} profile={profile} />
     </div>
   );
 }
