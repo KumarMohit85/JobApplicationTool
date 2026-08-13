@@ -2,6 +2,7 @@ import type { ExtensionMessage, ExtensionResponse } from '@/lib/job-context';
 import { runAutofillOnPage } from './autofill/run';
 import { extractJobContextFromPage, getSelectedTextFromPage } from './extract';
 import { insertTextOnPage } from './insert';
+import { captureLinkedInPost } from './post-capture';
 
 chrome.runtime.onMessage.addListener(
   (message: ExtensionMessage, _sender, sendResponse: (response: ExtensionResponse) => void) => {
@@ -38,6 +39,20 @@ chrome.runtime.onMessage.addListener(
             error: 'Autofill failed on this page.',
           });
         });
+      return true;
+    }
+
+    if (message?.type === 'CAPTURE_LINKEDIN_POST') {
+      try {
+        const capture = captureLinkedInPost();
+        sendResponse({ type: 'LINKEDIN_POST_CAPTURE', capture });
+      } catch {
+        sendResponse({
+          type: 'LINKEDIN_POST_CAPTURE',
+          capture: null,
+          error: 'Failed to read LinkedIn post.',
+        });
+      }
       return true;
     }
 

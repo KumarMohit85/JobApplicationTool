@@ -2,19 +2,29 @@ import { JOB_CONTEXT_STORAGE_KEY, type JobContext, type JobSource } from '@/type
 
 import type { AutofillRequest, AutofillResult } from '@/lib/autofill-types';
 
+export type LinkedInPostCapturePayload = {
+  emails: string[];
+  company: string;
+  role: string;
+  description: string;
+  sourceUrl: string;
+};
+
 export type ExtensionMessage =
   | { type: 'PING' }
   | { type: 'GET_JOB_CONTEXT' }
   | { type: 'GET_SELECTED_TEXT' }
   | { type: 'INSERT_TEXT'; text: string }
-  | { type: 'AUTOFILL'; request: AutofillRequest };
+  | { type: 'AUTOFILL'; request: AutofillRequest }
+  | { type: 'CAPTURE_LINKEDIN_POST' };
 
 export type ExtensionResponse =
   | { ok: true; version: string }
   | { type: 'JOB_CONTEXT'; context: JobContext | null; error?: string }
   | { type: 'SELECTED_TEXT'; text: string }
   | { type: 'INSERT_TEXT_RESULT'; success: boolean; error?: string }
-  | { type: 'AUTOFILL_RESULT'; result: AutofillResult; error?: string };
+  | { type: 'AUTOFILL_RESULT'; result: AutofillResult; error?: string }
+  | { type: 'LINKEDIN_POST_CAPTURE'; capture: LinkedInPostCapturePayload | null; error?: string };
 
 export function isRestrictedUrl(url: string | undefined): boolean {
   if (!url) return true;

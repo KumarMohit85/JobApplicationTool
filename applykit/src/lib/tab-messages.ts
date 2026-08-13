@@ -106,3 +106,41 @@ export async function insertTextToActiveTab(text: string): Promise<{ success: bo
     return { success: false, error: 'Could not insert text. Click the target field on the page first.' };
   }
 }
+
+function isLinkedInPostCaptureResponse(
+  response: ExtensionResponse | undefined,
+): response is Extract<ExtensionResponse, { type: 'LINKEDIN_POST_CAPTURE' }> {
+  return Boolean(response && 'type' in response && response.type === 'LINKEDIN_POST_CAPTURE');
+}
+
+export async function captureLinkedInPostFromActiveTab(): Promise<{
+  capture: import('@/lib/job-context').LinkedInPostCapturePayload | null;
+  error?: string;
+}> {
+  const tab = await getActiveTab();
+  if (!tab?.id) {
+    return { capture: null, error: 'No active tab found.' };
+  }
+  if (!tab.url?.includes('linkedin.com')) {
+    return { capture: null, error: 'Open a LinkedIn feed post first.' };
+  }
+
+  try {
+    const response = (await chrome.tabs.sendMessage(tab.id, {
+      type: 'CAPTURE_LINKEDIN_POST',
+    } satisfies ExtensionMessage)) as ExtensionResponse | undefined;
+
+    if (!isLinkedInPostCaptureResponse(response)) {
+      return { capture: null, error: 'Content script did not respond. Refresh LinkedIn and try again.' };
+    }
+    if (response.error) {
+      return { capture: null, error: response.error };
+    }
+    if (!response.capture) {
+      return { capture: null, error: 'No hiring post detected. Scroll to a post with an email or role.' };
+    }
+    return { capture: response.capture };
+  } catch {
+    return { capture: null, error: 'Could not read LinkedIn. Refresh the page and try again.' };
+  }
+}
