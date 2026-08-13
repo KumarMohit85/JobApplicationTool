@@ -5,6 +5,7 @@ import {
   type Profile,
 } from '@/types/profile';
 import { createId } from '@/lib/id';
+import { normalizeSkills } from '@/lib/skills';
 
 export function createDefaultPersonalInfo(): PersonalInfo {
   return {
@@ -70,7 +71,7 @@ export function normalizeProfile(input: Partial<Profile> | null | undefined): Pr
     version: 1,
     personal: mergePersonal(input.personal ?? {}, base.personal),
     summary: typeof input.summary === 'string' ? input.summary : base.summary,
-    skills: Array.isArray(input.skills) ? input.skills : base.skills,
+    skills: normalizeSkills(input.skills),
     experience: Array.isArray(input.experience) ? input.experience : base.experience,
     education: Array.isArray(input.education) ? input.education : base.education,
     easyApplyDefaults: {

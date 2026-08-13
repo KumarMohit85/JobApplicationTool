@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { PersonalTab } from '@/components/options/PersonalTab';
+import { SkillsTab } from '@/components/options/SkillsTab';
+import { ResumesTab } from '@/components/options/ResumesTab';
 import { ExperienceTab } from '@/components/options/ExperienceTab';
 import { EducationTab } from '@/components/options/EducationTab';
 import { EasyApplyTab } from '@/components/options/EasyApplyTab';
 import { BackupTab } from '@/components/options/BackupTab';
 import { Button, SectionCard, StatusBanner } from '@/components/ui';
 
-type TabId = 'personal' | 'experience' | 'education' | 'easyApply' | 'backup';
+type TabId = 'personal' | 'skills' | 'resumes' | 'experience' | 'education' | 'easyApply' | 'backup';
 
 const tabs: { id: TabId; label: string }[] = [
   { id: 'personal', label: 'Personal' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'resumes', label: 'Resumes' },
   { id: 'experience', label: 'Experience' },
   { id: 'education', label: 'Education' },
   { id: 'easyApply', label: 'Easy Apply defaults' },
@@ -87,6 +91,10 @@ export default function OptionsApp() {
               {activeTab === 'personal' ? (
                 <PersonalTab profile={profile} onChange={handleChange} disabled={disabled} />
               ) : null}
+              {activeTab === 'skills' ? (
+                <SkillsTab profile={profile} onChange={handleChange} disabled={disabled} />
+              ) : null}
+              {activeTab === 'resumes' ? <ResumesTab disabled={disabled} /> : null}
               {activeTab === 'experience' ? (
                 <ExperienceTab profile={profile} onChange={handleChange} disabled={disabled} />
               ) : null}

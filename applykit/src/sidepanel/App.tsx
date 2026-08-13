@@ -29,6 +29,9 @@ export default function SidePanelApp() {
         <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
           <p className="font-medium text-slate-900">{profile.personal.fullName}</p>
           <p className="text-slate-600">{profile.personal.headline || profile.personal.email}</p>
+          {profile.skills.length > 0 ? (
+            <p className="mt-1 text-xs text-slate-500">{profile.skills.length} skills saved</p>
+          ) : null}
         </div>
       ) : null}
 

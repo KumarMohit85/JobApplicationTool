@@ -766,12 +766,13 @@ npm run build    # production build
 |---------|--------|
 | **Scaffold** (Vite + CRXJS + React + Tailwind) | Done |
 | **F1** Profile storage + Options UI | Done |
-| **F2** Skills library | Next |
-| **F3** Resume library | Pending |
-| **F4–F17** | Pending |
+| **F2** Skills library | Done |
+| **F3** Resume library (PDF + descriptions) | Done |
+| **F4** Page / job context extraction | Next |
+| **F5–F17** | Pending |
 
 ---
 
 ## Next step
 
-Continue MVP **one feature at a time**. Next up: **F2 — Skills library** (Options tab + matcher prep).
+Continue MVP **one feature at a time**. Next up: **F4 — Page / job context extraction** (LinkedIn job page + side panel).
