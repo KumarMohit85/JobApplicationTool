@@ -65,7 +65,10 @@ function extractCompany(text: string): string {
 export function captureLinkedInPost(): LinkedInPostCapture | null {
   const root = findPostRoot();
   if (!root) return null;
+  return captureLinkedInPostFromElement(root);
+}
 
+export function captureLinkedInPostFromElement(root: Element): LinkedInPostCapture | null {
   const description = textOf(root);
   if (description.length < 40) return null;
 

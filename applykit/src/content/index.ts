@@ -3,6 +3,11 @@ import { runAutofillOnPage } from './autofill/run';
 import { extractJobContextFromPage, getSelectedTextFromPage } from './extract';
 import { insertTextOnPage } from './insert';
 import { captureLinkedInPost } from './post-capture';
+import { initLinkedInPostOverlay } from './post-overlay';
+
+if (/linkedin\.com/i.test(window.location.hostname)) {
+  initLinkedInPostOverlay();
+}
 
 chrome.runtime.onMessage.addListener(
   (message: ExtensionMessage, _sender, sendResponse: (response: ExtensionResponse) => void) => {
