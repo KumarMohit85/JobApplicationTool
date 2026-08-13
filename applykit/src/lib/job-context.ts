@@ -1,14 +1,20 @@
 import { JOB_CONTEXT_STORAGE_KEY, type JobContext, type JobSource } from '@/types/job';
 
+import type { AutofillRequest, AutofillResult } from '@/lib/autofill-types';
+
 export type ExtensionMessage =
   | { type: 'PING' }
   | { type: 'GET_JOB_CONTEXT' }
-  | { type: 'GET_SELECTED_TEXT' };
+  | { type: 'GET_SELECTED_TEXT' }
+  | { type: 'INSERT_TEXT'; text: string }
+  | { type: 'AUTOFILL'; request: AutofillRequest };
 
 export type ExtensionResponse =
   | { ok: true; version: string }
   | { type: 'JOB_CONTEXT'; context: JobContext | null; error?: string }
-  | { type: 'SELECTED_TEXT'; text: string };
+  | { type: 'SELECTED_TEXT'; text: string }
+  | { type: 'INSERT_TEXT_RESULT'; success: boolean; error?: string }
+  | { type: 'AUTOFILL_RESULT'; result: AutofillResult; error?: string };
 
 export function isRestrictedUrl(url: string | undefined): boolean {
   if (!url) return true;

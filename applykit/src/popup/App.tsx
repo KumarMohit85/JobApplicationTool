@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Button, StatusBanner } from '@/components/ui';
+import { formatAutofillMessage, runAutofillOnActiveTab } from '@/lib/autofill-client';
 import { fetchJobContextFromActiveTab } from '@/lib/tab-messages';
 import '@/assets/tailwind.css';
 
 export default function PopupApp() {
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [scanning, setScanning] = useState(false);
+  const [filling, setFilling] = useState(false);
 
   const openOptions = () => {
     void chrome.runtime.openOptionsPage();
@@ -32,6 +34,14 @@ export default function PopupApp() {
     }
   };
 
+  const fillForm = async () => {
+    setFilling(true);
+    setScanMessage(null);
+    const { result, error } = await runAutofillOnActiveTab({ mode: 'form' });
+    setFilling(false);
+    setScanMessage(formatAutofillMessage(result, error));
+  };
+
   return (
     <div className="w-72 space-y-4 p-4">
       <div>
@@ -44,6 +54,9 @@ export default function PopupApp() {
       <div className="space-y-2">
         <Button disabled={scanning} onClick={() => void scanPage()}>
           {scanning ? 'Scanning…' : 'Scan job page'}
+        </Button>
+        <Button disabled={filling} onClick={() => void fillForm()}>
+          {filling ? 'Filling…' : 'Fill form on page'}
         </Button>
         <Button variant="secondary" onClick={() => void openSidePanel()}>
           Open side panel

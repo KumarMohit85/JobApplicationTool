@@ -76,3 +76,33 @@ export async function getActiveTabUrl(): Promise<string | undefined> {
   const tab = await getActiveTab();
   return tab?.url;
 }
+
+function isInsertTextResult(
+  response: ExtensionResponse | undefined,
+): response is Extract<ExtensionResponse, { type: 'INSERT_TEXT_RESULT' }> {
+  return Boolean(response && 'type' in response && response.type === 'INSERT_TEXT_RESULT');
+}
+
+export async function insertTextToActiveTab(text: string): Promise<{ success: boolean; error?: string }> {
+  const tab = await getActiveTab();
+  if (!tab?.id) {
+    return { success: false, error: 'No active tab found.' };
+  }
+  if (isRestrictedUrl(tab.url)) {
+    return { success: false, error: 'Cannot insert text on this page.' };
+  }
+
+  try {
+    const response = (await chrome.tabs.sendMessage(tab.id, {
+      type: 'INSERT_TEXT',
+      text,
+    } satisfies ExtensionMessage)) as ExtensionResponse | undefined;
+
+    if (isInsertTextResult(response)) {
+      return { success: response.success, error: response.error };
+    }
+    return { success: false, error: 'Content script did not respond. Refresh the page and try again.' };
+  } catch {
+    return { success: false, error: 'Could not insert text. Click the target field on the page first.' };
+  }
+}

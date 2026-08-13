@@ -771,11 +771,14 @@ npm run build    # production build
 | **F4** Page / job context extraction | Done |
 | **F5** Skill matching (side panel) | Done |
 | **F6** Resume matching (side panel) | Done |
-| **F7** Template generation | Next |
-| **F8–F17** | Pending |
+| **F7** Template generation (side panel) | Done |
+| **F15** Copy / insert on page | Done |
+| **F10** LinkedIn Easy Apply autofill | Done |
+| **F11** Generic + Greenhouse + Lever autofill | Done |
+| **F8–F9, F12–F17** | Pending |
 
 ---
 
 ## Next step
 
-Continue MVP **one feature at a time**. Next up: **F7 — Template generation** (cover letter + email snippets in side panel).
+Continue MVP **one feature at a time**. Next up: **F8 — Side panel polish** and **F9 — Popup quick actions**, then **F12 — LinkedIn post capture**.

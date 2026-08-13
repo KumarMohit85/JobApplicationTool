@@ -4,6 +4,8 @@ import type { Profile } from '@/types/profile';
 import type { ResumeVariant } from '@/types/resume';
 import { matchResume, matchSkills } from '@/lib/matcher';
 import { listResumes } from '@/lib/resumes';
+import { GeneratedContentPanel } from '@/components/sidepanel/GeneratedContentPanel';
+import { AutofillActions } from '@/components/sidepanel/AutofillActions';
 import { Button, StatusBanner } from '@/components/ui';
 
 type JobContextPanelProps = {
@@ -137,6 +139,10 @@ export function JobContextPanel({
           </p>
         </div>
       ) : null}
+
+      {profile.personal.fullName ? <AutofillActions context={context} profile={profile} /> : null}
+
+      <GeneratedContentPanel context={context} profile={profile} />
     </div>
   );
 }
