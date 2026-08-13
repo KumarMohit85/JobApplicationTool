@@ -14,7 +14,7 @@ Chrome extension (**ApplyKit**) to autofill job applications, match resumes to j
 ## Quick start
 
 ```bash
-git clone git@github.com-kumar:KumarMohit85/JobApplicationTool.git
+git clone https://github.com/KumarMohit85/JobApplicationTool.git
 cd JobApplicationTool/applykit
 npm install
 npm run build

@@ -17,31 +17,41 @@ This guide covers cloning the repo, building the extension, and loading it in Ch
 
 ## 1. Clone the repository
 
-### SSH (recommended for KumarMohit85 account)
+Replace `OWNER` and `REPO` with the GitHub username and repository name shown on the repo page.
 
-If your `~/.ssh/config` includes:
+### HTTPS (simplest)
 
-```
-Host github.com-kumar
-    HostName github.com
-    User git
-    IdentityFile ~/.ssh/id_ed25519
-    IdentitiesOnly yes
-```
-
-Clone with:
+Works for everyone; GitHub may prompt for login on private repos:
 
 ```bash
-git clone git@github.com-kumar:KumarMohit85/JobApplicationTool.git
-cd JobApplicationTool
+git clone https://github.com/OWNER/REPO.git
+cd REPO
 ```
 
-### HTTPS
+Example for this project:
 
 ```bash
 git clone https://github.com/KumarMohit85/JobApplicationTool.git
 cd JobApplicationTool
 ```
+
+### SSH
+
+Use this if you already use SSH keys with GitHub (`git@github.com`):
+
+```bash
+git clone git@github.com:OWNER/REPO.git
+cd REPO
+```
+
+Example:
+
+```bash
+git clone git@github.com:KumarMohit85/JobApplicationTool.git
+cd JobApplicationTool
+```
+
+If you use a custom SSH host alias in `~/.ssh/config`, use that host instead of `github.com` in the clone URL.
 
 ---
 
@@ -143,8 +153,9 @@ Then in **`chrome://extensions`**, click **Reload** on ApplyKit.
 
 ### SSH clone permission denied
 
-- Test SSH: `ssh -T git@github.com-kumar`
-- Ensure your public key is added to the [KumarMohit85](https://github.com/KumarMohit85) GitHub account
+- Test your GitHub SSH setup: `ssh -T git@github.com`
+- Ensure your SSH public key is added in **GitHub → Settings → SSH and GPG keys**
+- See [GitHub’s SSH documentation](https://docs.github.com/en/authentication/connecting-to-github-with-ssh)
 
 ---
 
