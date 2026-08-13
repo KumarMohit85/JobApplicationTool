@@ -35,6 +35,11 @@ const manifest: ManifestV3Export = {
       js: ['src/content/index.ts'],
       run_at: 'document_idle',
     },
+    {
+      matches: ['https://mail.google.com/*'],
+      js: ['src/content/gmail-index.ts'],
+      run_at: 'document_idle',
+    },
   ],
 };
 

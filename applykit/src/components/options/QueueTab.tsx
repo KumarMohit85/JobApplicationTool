@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import type { QueueItem } from '@/types/queue';
 import { csvToQueueItems, downloadCsv, queueToCsv } from '@/lib/csv';
+import { prepareMailSend } from '@/lib/mail-send';
 import { deleteQueueItem, importQueueItems, listQueue, updateQueueItem } from '@/lib/queue';
 import { Button, StatusBanner } from '@/components/ui';
 
 export function QueueTab() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sendingId, setSendingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ text: string; tone: 'success' | 'error' | 'info' } | null>(
     null,
   );
@@ -43,6 +45,14 @@ export function QueueTab() {
     } catch {
       setMessage({ text: 'Import failed. Check CSV format.', tone: 'error' });
     }
+  };
+
+  const sendMail = async (item: QueueItem) => {
+    setSendingId(item.id);
+    setMessage(null);
+    const result = await prepareMailSend(item);
+    setSendingId(null);
+    setMessage({ text: result.message, tone: result.success ? 'success' : 'error' });
   };
 
   const markSent = async (id: string) => {
@@ -114,7 +124,17 @@ export function QueueTab() {
                   <td className="px-3 py-2">{item.email || '—'}</td>
                   <td className="px-3 py-2">{item.status}</td>
                   <td className="px-3 py-2">
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      {item.type === 'linkedin_mail' && item.status === 'pending' ? (
+                        <button
+                          type="button"
+                          className="text-xs text-indigo-600 hover:underline"
+                          disabled={sendingId === item.id}
+                          onClick={() => void sendMail(item)}
+                        >
+                          {sendingId === item.id ? 'Opening…' : 'Send'}
+                        </button>
+                      ) : null}
                       {item.status === 'pending' ? (
                         <button
                           type="button"
