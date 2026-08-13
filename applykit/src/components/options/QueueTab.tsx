@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { QueueItem } from '@/types/queue';
 import { csvToQueueItems, downloadCsv, queueToCsv } from '@/lib/csv';
+import { appendActivityLog } from '@/lib/activity-log';
 import { prepareMailSend } from '@/lib/mail-send';
 import { deleteQueueItem, importQueueItems, listQueue, updateQueueItem } from '@/lib/queue';
 import { Button, StatusBanner } from '@/components/ui';
@@ -53,11 +54,30 @@ export function QueueTab() {
     const result = await prepareMailSend(item);
     setSendingId(null);
     setMessage({ text: result.message, tone: result.success ? 'success' : 'error' });
+    if (result.success) {
+      void appendActivityLog({
+        action: 'email_sent',
+        company: item.company,
+        role: item.role,
+        url: item.sourceUrl,
+        resumeId: item.resumeId,
+      });
+    }
   };
 
   const markSent = async (id: string) => {
+    const item = items.find((i) => i.id === id);
     await updateQueueItem(id, { status: 'sent' });
     await reload();
+    if (item) {
+      void appendActivityLog({
+        action: 'email_sent',
+        company: item.company,
+        role: item.role,
+        url: item.sourceUrl,
+        resumeId: item.resumeId,
+      });
+    }
   };
 
   const remove = async (id: string) => {

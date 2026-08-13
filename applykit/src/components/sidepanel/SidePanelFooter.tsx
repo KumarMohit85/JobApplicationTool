@@ -7,6 +7,7 @@ import {
   formatAutofillMessage,
   runAutofillOnActiveTab,
 } from '@/lib/autofill-client';
+import { appendActivityLog } from '@/lib/activity-log';
 import { addQueueItem } from '@/lib/queue';
 import { Button, StatusBanner } from '@/components/ui';
 
@@ -51,6 +52,17 @@ export function SidePanelFooter({
       message: formatAutofillMessage(result, error),
       tone: error || result.errors.length > 0 ? 'error' : result.filledCount > 0 ? 'success' : 'info',
     });
+
+    if (!error && result.filledCount > 0 && context) {
+      void appendActivityLog({
+        action: mode === 'easy_apply' ? 'easy_apply_fill' : 'form_fill',
+        company: context.company,
+        role: context.title,
+        url: context.url,
+        resumeId: selectedResume?.id,
+        resumeName: selectedResume?.name,
+      });
+    }
   };
 
   const saveToQueue = async () => {
@@ -76,6 +88,14 @@ export function SidePanelFooter({
       setFeedback({ message: 'Already in queue (same URL or role).', tone: 'info' });
     } else if (item) {
       setFeedback({ message: 'Saved to queue.', tone: 'success' });
+      void appendActivityLog({
+        action: 'queued',
+        company: context.company,
+        role: context.title,
+        url: context.url,
+        resumeId: selectedResume?.id,
+        resumeName: selectedResume?.name,
+      });
     } else {
       setFeedback({ message: 'Could not save to queue.', tone: 'error' });
     }

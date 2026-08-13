@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, StatusBanner } from '@/components/ui';
 import { formatAutofillMessage, runAutofillOnActiveTab } from '@/lib/autofill-client';
+import { appendActivityLog } from '@/lib/activity-log';
 import type { LinkedInPostCapturePayload } from '@/lib/job-context';
 import { addQueueItem } from '@/lib/queue';
 import { captureLinkedInPostFromActiveTab, fetchJobContextFromActiveTab } from '@/lib/tab-messages';
@@ -51,6 +52,14 @@ export default function PopupApp() {
     const { result, error } = await runAutofillOnActiveTab({ mode: 'form' });
     setBusy(null);
     showMessage(formatAutofillMessage(result, error), error ? 'error' : 'success');
+    if (!error && result.filledCount > 0) {
+      void appendActivityLog({
+        action: 'form_fill',
+        company: '',
+        role: '',
+        url: '',
+      });
+    }
   };
 
   const capturePost = async () => {
