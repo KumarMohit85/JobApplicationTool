@@ -777,10 +777,11 @@ npm run build    # production build
 | **F11** Generic + Greenhouse + Lever autofill | Done |
 | **F8** Side panel tabbed UI | Done |
 | **F9** Popup quick actions | Done |
-| **F12–F17** | Pending |
+| **F12** LinkedIn post capture overlay | Done |
+| **F13–F17** | Pending |
 
 ---
 
 ## Next step
 
-Continue MVP **one feature at a time**. Next up: **F12 — LinkedIn post capture overlay**.
+Continue MVP **one feature at a time**. Next up: **F13 — CSV export / import**.

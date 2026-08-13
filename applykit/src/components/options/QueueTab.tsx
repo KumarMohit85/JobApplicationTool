@@ -1,0 +1,144 @@
+import { useEffect, useRef, useState } from 'react';
+import type { QueueItem } from '@/types/queue';
+import { csvToQueueItems, downloadCsv, queueToCsv } from '@/lib/csv';
+import { deleteQueueItem, importQueueItems, listQueue, updateQueueItem } from '@/lib/queue';
+import { Button, StatusBanner } from '@/components/ui';
+
+export function QueueTab() {
+  const [items, setItems] = useState<QueueItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState<{ text: string; tone: 'success' | 'error' | 'info' } | null>(
+    null,
+  );
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const reload = async () => {
+    setLoading(true);
+    const next = await listQueue();
+    setItems(next);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    void reload();
+  }, []);
+
+  const exportCsv = (pendingOnly: boolean) => {
+    const rows = pendingOnly ? items.filter((item) => item.status === 'pending') : items;
+    const date = new Date().toISOString().slice(0, 10);
+    downloadCsv(`applykit-queue-${pendingOnly ? 'pending-' : ''}${date}.csv`, queueToCsv(rows));
+    setMessage({ text: `Exported ${rows.length} row(s).`, tone: 'success' });
+  };
+
+  const handleImport = async (file: File) => {
+    try {
+      const text = await file.text();
+      const parsed = csvToQueueItems(text);
+      const result = await importQueueItems(parsed);
+      await reload();
+      setMessage({
+        text: `Import complete: ${result.added} added, ${result.updated} updated, ${result.skipped} skipped.`,
+        tone: 'success',
+      });
+    } catch {
+      setMessage({ text: 'Import failed. Check CSV format.', tone: 'error' });
+    }
+  };
+
+  const markSent = async (id: string) => {
+    await updateQueueItem(id, { status: 'sent' });
+    await reload();
+  };
+
+  const remove = async (id: string) => {
+    await deleteQueueItem(id);
+    await reload();
+  };
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-slate-600">
+        Mail queue and saved job scans. Export to CSV for editing in Excel or Google Sheets, then
+        re-import.
+      </p>
+
+      {message ? <StatusBanner message={message.text} tone={message.tone} /> : null}
+
+      <div className="flex flex-wrap gap-3">
+        <Button onClick={() => exportCsv(false)} disabled={loading || items.length === 0}>
+          Export all CSV
+        </Button>
+        <Button variant="secondary" onClick={() => exportCsv(true)} disabled={loading}>
+          Export pending only
+        </Button>
+        <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+          Import CSV
+        </Button>
+      </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv,text/csv"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) void handleImport(file);
+          e.target.value = '';
+        }}
+      />
+
+      {loading ? (
+        <p className="text-sm text-slate-500">Loading queue…</p>
+      ) : items.length === 0 ? (
+        <p className="text-sm text-slate-500">Queue is empty. Save a LinkedIn post or job scan first.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-200">
+          <table className="min-w-full text-left text-sm">
+            <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+              <tr>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Company</th>
+                <th className="px-3 py-2">Role</th>
+                <th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item) => (
+                <tr key={item.id} className="border-t border-slate-100">
+                  <td className="px-3 py-2">{item.type === 'linkedin_mail' ? 'Mail' : 'Job'}</td>
+                  <td className="px-3 py-2">{item.company || '—'}</td>
+                  <td className="px-3 py-2">{item.role || '—'}</td>
+                  <td className="px-3 py-2">{item.email || '—'}</td>
+                  <td className="px-3 py-2">{item.status}</td>
+                  <td className="px-3 py-2">
+                    <div className="flex gap-2">
+                      {item.status === 'pending' ? (
+                        <button
+                          type="button"
+                          className="text-xs text-indigo-600 hover:underline"
+                          onClick={() => void markSent(item.id)}
+                        >
+                          Mark sent
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        className="text-xs text-red-600 hover:underline"
+                        onClick={() => void remove(item.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}

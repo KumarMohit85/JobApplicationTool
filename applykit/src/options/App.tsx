@@ -7,9 +7,10 @@ import { ExperienceTab } from '@/components/options/ExperienceTab';
 import { EducationTab } from '@/components/options/EducationTab';
 import { EasyApplyTab } from '@/components/options/EasyApplyTab';
 import { BackupTab } from '@/components/options/BackupTab';
+import { QueueTab } from '@/components/options/QueueTab';
 import { Button, SectionCard, StatusBanner } from '@/components/ui';
 
-type TabId = 'personal' | 'skills' | 'resumes' | 'experience' | 'education' | 'easyApply' | 'backup';
+type TabId = 'personal' | 'skills' | 'resumes' | 'experience' | 'education' | 'easyApply' | 'queue' | 'backup';
 
 const tabs: { id: TabId; label: string }[] = [
   { id: 'personal', label: 'Personal' },
@@ -18,6 +19,7 @@ const tabs: { id: TabId; label: string }[] = [
   { id: 'experience', label: 'Experience' },
   { id: 'education', label: 'Education' },
   { id: 'easyApply', label: 'Easy Apply defaults' },
+  { id: 'queue', label: 'Mail queue' },
   { id: 'backup', label: 'Backup' },
 ];
 
@@ -104,6 +106,7 @@ export default function OptionsApp() {
               {activeTab === 'easyApply' ? (
                 <EasyApplyTab profile={profile} onChange={handleChange} disabled={disabled} />
               ) : null}
+              {activeTab === 'queue' ? <QueueTab /> : null}
               {activeTab === 'backup' ? (
                 <BackupTab
                   profile={profile}

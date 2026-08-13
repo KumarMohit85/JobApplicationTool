@@ -113,3 +113,50 @@ export async function deleteQueueItem(id: string): Promise<void> {
   const existing = await listQueue();
   await saveQueueList(existing.filter((item) => item.id !== id));
 }
+
+export async function importQueueItems(
+  incoming: Partial<QueueItem>[],
+): Promise<{ added: number; updated: number; skipped: number }> {
+  const existing = await listQueue();
+  const byId = new Map(existing.map((item) => [item.id, item]));
+  let added = 0;
+  let updated = 0;
+  let skipped = 0;
+
+  for (const partial of incoming) {
+    const normalized = normalizeQueueItem(partial);
+    if (!normalized) {
+      skipped += 1;
+      continue;
+    }
+
+    const existingById = partial.id ? byId.get(partial.id) : undefined;
+    const duplicate = existing.find(
+      (item) =>
+        item.id !== normalized.id &&
+        isQueueDuplicate([item], {
+          email: normalized.email,
+          company: normalized.company,
+          role: normalized.role,
+          sourceUrl: normalized.sourceUrl,
+        }),
+    );
+
+    if (existingById) {
+      byId.set(existingById.id, normalizeQueueItem({ ...existingById, ...partial, updatedAt: new Date().toISOString() })!);
+      updated += 1;
+    } else if (duplicate) {
+      skipped += 1;
+    } else {
+      byId.set(normalized.id, normalized);
+      added += 1;
+    }
+  }
+
+  await saveQueueList([...byId.values()]);
+  return { added, updated, skipped };
+}
+
+export async function replaceQueue(items: QueueItem[]): Promise<QueueItem[]> {
+  return saveQueueList(items);
+}
