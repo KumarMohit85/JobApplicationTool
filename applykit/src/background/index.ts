@@ -23,6 +23,7 @@ import {
 } from '@/lib/github-repo-sync';
 import { parseHiringPost, type ParsedJobEntry } from '@/lib/post-parser';
 import { getProfile, saveProfile } from '@/lib/profile';
+import { importQueueItems, listQueue } from '@/lib/queue';
 import type { Profile } from '@/types/profile';
 import type { QueueItem } from '@/types/queue';
 
@@ -201,7 +202,6 @@ async function handleCloudConnect(
     // Also pull queue from repo if present
     const remoteQueue = await pullQueueFromRepo(githubToken, result.owner, result.repo);
     if (remoteQueue.length > 0) {
-      const { importQueueItems } = await import('@/lib/queue');
       await importQueueItems(remoteQueue);
     }
 
@@ -213,7 +213,9 @@ async function handleCloudConnect(
       message: result.message,
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Connect failed.' };
+    const stackInfo = err instanceof Error ? `${err.message} [At: ${err.stack?.split('\n')[1]?.trim() || 'unknown'}]` : String(err);
+    console.error('[ApplyKit Cloud Connect Error]:', err);
+    return { ok: false, error: stackInfo };
   }
 }
 
@@ -255,7 +257,6 @@ async function handleCloudPush(
       await pushProfileToRepo(token, owner, repo, profile);
 
       // Also push queue
-      const { listQueue } = await import('@/lib/queue');
       const queueItems = await listQueue();
       await pushQueueToRepo(token, owner, repo, queueItems);
 
@@ -280,7 +281,9 @@ async function handleCloudPush(
       return { ok: true, gistId };
     }
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Push failed.' };
+    const stackInfo = err instanceof Error ? `${err.message} [At: ${err.stack?.split('\n')[1]?.trim() || 'unknown'}]` : String(err);
+    console.error('[ApplyKit Cloud Push Error]:', err);
+    return { ok: false, error: stackInfo };
   }
 
   return { ok: false, error: `Provider "${settings.provider}" does not support push.` };
@@ -304,7 +307,6 @@ async function handleCloudPull(): Promise<{ ok: boolean; profile?: Profile; erro
       // Also pull queue
       const remoteQueue = await pullQueueFromRepo(token, owner, repo);
       if (remoteQueue.length > 0) {
-        const { importQueueItems } = await import('@/lib/queue');
         await importQueueItems(remoteQueue);
       }
     } else if (settings.provider === 'github_gist') {
@@ -328,7 +330,9 @@ async function handleCloudPull(): Promise<{ ok: boolean; profile?: Profile; erro
 
     return { ok: true, profile: pulled };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Pull failed.' };
+    const stackInfo = err instanceof Error ? `${err.message} [At: ${err.stack?.split('\n')[1]?.trim() || 'unknown'}]` : String(err);
+    console.error('[ApplyKit Cloud Pull Error]:', err);
+    return { ok: false, error: stackInfo };
   }
 }
 

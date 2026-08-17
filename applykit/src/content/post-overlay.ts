@@ -1,4 +1,5 @@
 import { addQueueItem } from '@/lib/queue';
+import { parseHiringPost } from '@/lib/post-parser';
 import { captureLinkedInPostFromElement, type LinkedInPostCapture } from './post-capture';
 
 const OVERLAY_CONTAINER_CLASS = 'applykit-post-actions-container';
@@ -180,7 +181,6 @@ async function quickSavePost(capture: LinkedInPostCapture): Promise<void> {
   }
 
   if (entries.length === 0) {
-    const { parseHiringPost } = await import('@/lib/post-parser');
     entries = parseHiringPost(capture.description, capture.sourceUrl);
   }
 
