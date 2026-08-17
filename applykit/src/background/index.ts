@@ -22,7 +22,7 @@ import {
   getGitHubUsername,
 } from '@/lib/github-repo-sync';
 import { parseHiringPost, type ParsedJobEntry } from '@/lib/post-parser';
-import { saveProfile } from '@/lib/profile';
+import { getProfile, saveProfile } from '@/lib/profile';
 import type { Profile } from '@/types/profile';
 import type { QueueItem } from '@/types/queue';
 
@@ -338,6 +338,37 @@ chrome.runtime.onInstalled.addListener(() => {
   console.info('[ApplyKit] Extension installed / updated.');
 });
 
+async function handleSaveCustomAnswer(
+  question: string,
+  answer: string,
+): Promise<{ ok: boolean }> {
+  const profile = await getProfile();
+  const existingAnswers = profile.easyApplyDefaults.customAnswers || {};
+
+  const cleanKey = question.trim();
+  if (!cleanKey || !answer.trim()) return { ok: false };
+
+  if (existingAnswers[cleanKey] === answer.trim()) {
+    return { ok: true };
+  }
+
+  const updatedProfile: Profile = {
+    ...profile,
+    easyApplyDefaults: {
+      ...profile.easyApplyDefaults,
+      customAnswers: {
+        ...existingAnswers,
+        [cleanKey]: answer.trim(),
+      },
+    },
+    updatedAt: new Date().toISOString(),
+  };
+
+  await saveProfile(updatedProfile);
+  void handleCloudPush(updatedProfile);
+  return { ok: true };
+}
+
 // ─── Message router ───────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener(
@@ -351,6 +382,8 @@ chrome.runtime.onMessage.addListener(
       rawText?: string;
       sourceUrl?: string;
       queueItems?: QueueItem[];
+      question?: string;
+      answer?: string;
     };
 
     if (msg.type === 'PING') {
@@ -370,6 +403,11 @@ chrome.runtime.onMessage.addListener(
 
     if (msg.type === 'AI_PARSE_POST' && msg.rawText) {
       void handleAiParsePost(msg.rawText, msg.sourceUrl || '').then(sendResponse);
+      return true;
+    }
+
+    if (msg.type === 'SAVE_CUSTOM_ANSWER' && msg.question && msg.answer) {
+      void handleSaveCustomAnswer(msg.question, msg.answer).then(sendResponse);
       return true;
     }
 

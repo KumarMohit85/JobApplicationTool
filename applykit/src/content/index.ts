@@ -5,9 +5,14 @@ import { insertTextOnPage } from './insert';
 import { captureLinkedInPost } from './post-capture';
 import { initLinkedInPostOverlay } from './post-overlay';
 
+import { initFormLearner } from './autofill/form-learner';
+
 if (/linkedin\.com/i.test(window.location.hostname)) {
   initLinkedInPostOverlay();
 }
+
+// Start auto-learning user inputs on all job application forms
+initFormLearner();
 
 chrome.runtime.onMessage.addListener(
   (message: ExtensionMessage, _sender, sendResponse: (response: ExtensionResponse) => void) => {

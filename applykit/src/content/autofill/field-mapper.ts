@@ -74,6 +74,8 @@ export function mapFieldKey(el: HTMLElement): FieldKey | null {
 
 export function lookupCustomAnswer(hints: string, customAnswers: Record<string, string>): string | null {
   const normalizedHints = normalizeHint(hints);
+
+  // 1. Substring / exact match
   for (const [question, answer] of Object.entries(customAnswers)) {
     const q = normalizeHint(question);
     if (!q || !answer.trim()) continue;
@@ -81,5 +83,19 @@ export function lookupCustomAnswer(hints: string, customAnswers: Record<string, 
       return answer;
     }
   }
+
+  // 2. Token overlap matching for rephrased questions (e.g. "React Experience" vs "Years of experience with React")
+  const hintTokens = normalizedHints.split(/\W+/).filter((t) => t.length > 2);
+  if (hintTokens.length >= 2) {
+    for (const [question, answer] of Object.entries(customAnswers)) {
+      const qTokens = normalizeHint(question).split(/\W+/).filter((t) => t.length > 2);
+      if (qTokens.length < 2) continue;
+      const common = hintTokens.filter((t) => qTokens.includes(t));
+      if (common.length >= Math.min(2, qTokens.length)) {
+        return answer;
+      }
+    }
+  }
+
   return null;
 }
