@@ -27,18 +27,18 @@ type TabId =
   | 'ai'
   | 'cloud';
 
-const tabs: { id: TabId; label: string }[] = [
-  { id: 'personal', label: 'Personal' },
-  { id: 'skills', label: 'Skills' },
-  { id: 'resumes', label: 'Resumes' },
-  { id: 'experience', label: 'Experience' },
-  { id: 'education', label: 'Education' },
-  { id: 'easyApply', label: 'Easy Apply defaults' },
-  { id: 'queue', label: 'Mail queue' },
-  { id: 'activity', label: 'Activity log' },
-  { id: 'backup', label: 'Backup' },
-  { id: 'ai', label: '✨ AI settings' },
-  { id: 'cloud', label: '☁️ Cloud sync' },
+const tabs: { id: TabId; label: string; icon: string }[] = [
+  { id: 'personal', label: 'Personal', icon: '👤' },
+  { id: 'skills', label: 'Skills', icon: '⚡' },
+  { id: 'resumes', label: 'Resumes', icon: '📄' },
+  { id: 'experience', label: 'Experience', icon: '💼' },
+  { id: 'education', label: 'Education', icon: '🎓' },
+  { id: 'easyApply', label: 'Easy Apply', icon: '⚙️' },
+  { id: 'queue', label: 'Mail queue', icon: '📋' },
+  { id: 'activity', label: 'Activity log', icon: '📊' },
+  { id: 'backup', label: 'Backup', icon: '💾' },
+  { id: 'ai', label: 'AI settings', icon: '✨' },
+  { id: 'cloud', label: 'Cloud sync', icon: '☁️' },
 ];
 
 export default function OptionsApp() {
@@ -57,7 +57,6 @@ export default function OptionsApp() {
     const ok = await persist();
     if (ok) {
       setSaveMessage('Profile saved successfully.');
-      // Auto-push to cloud in background if enabled
       void chrome.runtime.sendMessage({ type: 'CLOUD_PUSH', profile });
     }
   };
@@ -65,16 +64,28 @@ export default function OptionsApp() {
   const disabled = loading || saving;
 
   return (
-    <div className="min-h-screen bg-slate-100">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900">ApplyKit Settings</h1>
-            <p className="text-sm text-slate-600">Manage your profile for autofill and applications.</p>
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased selection:bg-indigo-500 selection:text-white">
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-purple-600 shadow-md shadow-indigo-200/60 text-white font-black text-lg">
+              A
+            </div>
+            <div>
+              <h1 className="text-lg font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                ApplyKit <span className="rounded-md bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700 border border-indigo-100">v0.2</span>
+              </h1>
+              <p className="text-xs text-slate-500">Smart Job Application & Cloud Sync Suite</p>
+            </div>
           </div>
+
           <div className="flex items-center gap-3">
             {dirty ? (
-              <span className="text-xs font-medium text-amber-600">Unsaved changes</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 border border-amber-200 animate-pulse">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                Unsaved changes
+              </span>
             ) : null}
             <Button disabled={disabled || !dirty} onClick={() => void handleSave()}>
               {saving ? 'Saving…' : 'Save profile'}
@@ -83,32 +94,39 @@ export default function OptionsApp() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-6 py-6">
+      {/* Main Content */}
+      <main className="mx-auto max-w-5xl px-6 py-8">
         {loading ? (
-          <StatusBanner message="Loading profile…" tone="info" />
+          <StatusBanner message="Loading profile settings…" tone="info" />
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {error ? <StatusBanner message={error} tone="error" /> : null}
             {saveMessage ? <StatusBanner message={saveMessage} tone="success" /> : null}
 
-            <nav className="flex flex-wrap gap-2">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+            {/* Navigation Tabs */}
+            <nav className="flex flex-wrap gap-1.5 rounded-2xl border border-slate-200/80 bg-white p-1.5 shadow-xs">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all duration-150 ${
+                      isActive
+                        ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm shadow-indigo-200'
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                    }`}
+                  >
+                    <span>{tab.icon}</span>
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
             </nav>
 
+            {/* Section Card */}
             <SectionCard title={tabs.find((t) => t.id === activeTab)?.label ?? 'Profile'}>
               {activeTab === 'personal' ? (
                 <PersonalTab profile={profile} onChange={handleChange} disabled={disabled} />

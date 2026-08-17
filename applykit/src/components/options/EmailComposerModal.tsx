@@ -207,10 +207,27 @@ export function EmailComposerModal({
             />
           </div>
 
+          {/* Resume Selection & GDrive link */}
           <div className="space-y-1">
-            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Attached Resume PDF
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
+                Attached Resume / GDrive Link
+              </label>
+              {resumes.find((r) => r.id === selectedResumeId)?.driveUrl ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const driveUrl = resumes.find((r) => r.id === selectedResumeId)?.driveUrl;
+                    if (driveUrl) {
+                      setBody((prev) => `${prev}\n\nYou can also view my resume on Google Drive here: ${driveUrl}`);
+                    }
+                  }}
+                  className="text-xs font-semibold text-sky-600 hover:text-sky-800"
+                >
+                  📂 + Add GDrive link to body
+                </button>
+              ) : null}
+            </div>
             <select
               value={selectedResumeId}
               onChange={(e) => setSelectedResumeId(e.target.value)}
@@ -221,7 +238,7 @@ export function EmailComposerModal({
               ) : (
                 resumes.map((r) => (
                   <option key={r.id} value={r.id}>
-                    📄 {r.name} {r.targetRoles?.length ? `(${r.targetRoles.join(', ')})` : ''}
+                    📄 {r.name} {r.driveUrl ? '(🔗 GDrive Link)' : ''}
                   </option>
                 ))
               )}

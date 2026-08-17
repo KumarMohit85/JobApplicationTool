@@ -11,17 +11,27 @@ const GIST_RESUMES_FILE = 'applykit-resumes.json';
 
 // ─── Base64 Helpers ──────────────────────────────────────────────────────────
 
-function blobToBase64(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const res = reader.result as string;
-      const base64 = res.includes(',') ? res.split(',')[1] : res;
-      resolve(base64);
-    };
-    reader.onerror = () => reject(new Error('Failed to read blob as Base64.'));
-    reader.readAsDataURL(blob);
-  });
+async function blobToBase64(blob: Blob): Promise<string> {
+  if (typeof FileReader !== 'undefined') {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const res = reader.result as string;
+        const base64 = res.includes(',') ? res.split(',')[1] : res;
+        resolve(base64);
+      };
+      reader.onerror = () => reject(new Error('Failed to read blob as Base64.'));
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  const buffer = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 function base64ToBlob(base64: string, mimeType = 'application/pdf'): Blob {

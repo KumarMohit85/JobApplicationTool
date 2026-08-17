@@ -121,10 +121,26 @@ export async function downloadResumePdf(resume: ResumeVariant): Promise<void> {
   if (!blob) {
     throw new Error('No PDF file stored for this resume.');
   }
+
+  const filename = resume.fileName || `${resume.name.replace(/\s+/g, '_')}.pdf`;
+
+  if (typeof document === 'undefined') {
+    const buffer = await blob.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const b64 = btoa(binary);
+    const dataUrl = `data:application/pdf;base64,${b64}`;
+    await chrome.downloads.download({ url: dataUrl, filename, saveAs: false });
+    return;
+  }
+
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
-  anchor.download = resume.fileName || `${resume.name.replace(/\s+/g, '_')}.pdf`;
+  anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
 }

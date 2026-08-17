@@ -7,15 +7,15 @@ import { MatchTab } from '@/components/sidepanel/MatchTab';
 import { CoverTab } from '@/components/sidepanel/CoverTab';
 import { EmailTab } from '@/components/sidepanel/EmailTab';
 import { SidePanelFooter } from '@/components/sidepanel/SidePanelFooter';
-import { Button, StatusBanner } from '@/components/ui';
+import { StatusBanner } from '@/components/ui';
 
 type PanelTab = 'context' | 'match' | 'cover' | 'email';
 
-const TABS: { id: PanelTab; label: string }[] = [
-  { id: 'context', label: 'Context' },
-  { id: 'match', label: 'Match' },
-  { id: 'cover', label: 'Cover' },
-  { id: 'email', label: 'Email' },
+const TABS: { id: PanelTab; label: string; icon: string }[] = [
+  { id: 'context', label: 'Context', icon: '🎯' },
+  { id: 'match', label: 'Match', icon: '⚡' },
+  { id: 'cover', label: 'Cover', icon: '📝' },
+  { id: 'email', label: 'Email', icon: '📧' },
 ];
 
 export default function SidePanelApp() {
@@ -49,11 +49,27 @@ export default function SidePanelApp() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col p-4">
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-lg font-bold text-slate-900">ApplyKit</h1>
-          <p className="text-sm text-slate-600">Review job context, then act</p>
+    <div className="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 antialiased p-3.5 selection:bg-indigo-500 selection:text-white">
+      <div className="space-y-3.5">
+        {/* Modern Sidepanel Header */}
+        <div className="flex items-center justify-between rounded-2xl bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-600 p-3.5 text-white shadow-md shadow-indigo-200/50">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/20 backdrop-blur-xs font-black text-white text-base">
+              A
+            </div>
+            <div>
+              <h1 className="text-base font-bold tracking-tight">ApplyKit</h1>
+              <p className="text-xs text-indigo-100/90">Smart Job Copilot</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={openOptions}
+            title="Open Settings"
+            className="rounded-xl bg-white/15 px-2.5 py-1 text-xs font-medium text-white hover:bg-white/25 transition-all"
+          >
+            ⚙️ Settings
+          </button>
         </div>
 
         {profileLoading ? <StatusBanner message="Loading profile…" tone="info" /> : null}
@@ -61,33 +77,43 @@ export default function SidePanelApp() {
 
         {!profileLoading && !profile.personal.fullName ? (
           <StatusBanner
-            message="Complete your profile in settings to enable matching and autofill."
+            message="Complete profile in settings to enable matching & autofill."
             tone="info"
           />
         ) : null}
 
         {!profileLoading && profile.personal.fullName ? (
-          <div className="rounded-lg border border-slate-200 bg-white p-3 text-sm">
-            <p className="font-medium text-slate-900">{profile.personal.fullName}</p>
-            <p className="text-slate-600">{profile.personal.headline || profile.personal.email}</p>
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white p-3 shadow-xs">
+            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-xs font-bold text-white shadow-xs">
+              {profile.personal.fullName.slice(0, 2).toUpperCase()}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-xs font-bold text-slate-900">{profile.personal.fullName}</p>
+              <p className="truncate text-xs text-slate-500">{profile.personal.headline || profile.personal.email}</p>
+            </div>
           </div>
         ) : null}
 
-        <nav className="flex gap-1">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 rounded-md px-2 py-2 text-xs font-medium ${
-                activeTab === tab.id
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50'
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Tab Navigation */}
+        <nav className="flex rounded-xl border border-slate-200/80 bg-white p-1 shadow-xs">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-1 rounded-lg py-1.5 text-xs font-semibold transition-all duration-150 ${
+                  isActive
+                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-xs'
+                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                }`}
+              >
+                <span>{tab.icon}</span>
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
         {activeTab === 'context' ? (
@@ -139,13 +165,9 @@ export default function SidePanelApp() {
             matchedSkillNames={matchedSkillNames}
           />
         ) : null}
-
-        <Button variant="secondary" onClick={openOptions}>
-          Open profile settings
-        </Button>
       </div>
 
-      <div className="mt-auto pt-4">
+      <div className="mt-auto pt-3.5">
         <SidePanelFooter
           context={context}
           profile={profile}

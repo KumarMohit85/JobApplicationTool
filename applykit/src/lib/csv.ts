@@ -100,6 +100,17 @@ export function csvToQueueItems(csv: string): Partial<QueueItem>[] {
 }
 
 export function downloadCsv(filename: string, csv: string): void {
+  if (typeof document === 'undefined') {
+    const bytes = new TextEncoder().encode(csv);
+    let binary = '';
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const dataUrl = `data:text/csv;base64,${btoa(binary)}`;
+    void chrome.downloads.download({ url: dataUrl, filename, saveAs: false });
+    return;
+  }
+
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

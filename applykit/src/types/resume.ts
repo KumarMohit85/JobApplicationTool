@@ -7,6 +7,7 @@ export type ResumeVariant = {
   skills: string[];
   keywords: string[];
   targetRoles: string[];
+  driveUrl?: string;
   priority: number;
   uploadedAt: string;
 };

@@ -63,8 +63,8 @@ export function ResumesTab({ disabled }: { disabled?: boolean }) {
 
   const handleSave = async () => {
     if (!editing) return;
-    if (!editing.fileName && !pendingFile) {
-      setError('Please upload a PDF file for this resume.');
+    if (!editing.fileName && !pendingFile && !editing.driveUrl?.trim()) {
+      setError('Please upload a PDF file or enter a Google Drive link for this resume.');
       return;
     }
     setError(null);
@@ -81,7 +81,7 @@ export function ResumesTab({ disabled }: { disabled?: boolean }) {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this resume and its PDF?')) return;
+    if (!window.confirm('Delete this resume variant?')) return;
     setError(null);
     try {
       await deleteResume(id);
@@ -109,8 +109,7 @@ export function ResumesTab({ disabled }: { disabled?: boolean }) {
   return (
     <div className="space-y-6">
       <p className="text-sm text-slate-600">
-        Upload multiple PDF resumes. Each variant needs a short description of what it is for — used
-        to pick the right resume for each job.
+        Upload multiple resume variants or attach Google Drive public view links. Storing a Google Drive link makes cold emailing recruiters seamless!
       </p>
 
       {error ? <StatusBanner message={error} tone="error" /> : null}
@@ -127,25 +126,35 @@ export function ResumesTab({ disabled }: { disabled?: boolean }) {
           {resumes.map((resume) => (
             <li
               key={resume.id}
-              className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3"
+              className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-xs"
             >
               <div>
-                <p className="font-medium text-slate-900">{resume.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-slate-900">{resume.name}</p>
+                  {resume.driveUrl ? (
+                    <a
+                      href={resume.driveUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 rounded bg-sky-50 border border-sky-200 px-2 py-0.5 text-xs font-semibold text-sky-700 hover:bg-sky-100"
+                    >
+                      📂 GDrive Link
+                    </a>
+                  ) : null}
+                </div>
                 <p className="text-xs text-slate-500">
-                  {resume.fileName || 'No PDF attached'} · priority {resume.priority}
+                  {resume.fileName ? `📄 ${resume.fileName}` : 'No PDF file'} · priority {resume.priority}
                 </p>
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Button variant="ghost" disabled={disabled} onClick={() => startEdit(resume)}>
                   Edit
                 </Button>
-                <Button
-                  variant="ghost"
-                  disabled={disabled || !resume.fileName}
-                  onClick={() => void handleDownload(resume)}
-                >
-                  Download PDF
-                </Button>
+                {resume.fileName ? (
+                  <Button variant="ghost" disabled={disabled} onClick={() => void handleDownload(resume)}>
+                    Download PDF
+                  </Button>
+                ) : null}
                 <Button variant="ghost" disabled={disabled} onClick={() => void handleDelete(resume.id)}>
                   Delete
                 </Button>
@@ -182,12 +191,25 @@ export function ResumesTab({ disabled }: { disabled?: boolean }) {
             </div>
 
             <Field
+              label="Google Drive / Public Resume Link (Recommended)"
+              hint="Public link to view/share your resume (e.g. https://drive.google.com/file/d/123.../view). Used in cold emails!"
+            >
+              <TextInput
+                disabled={disabled}
+                type="url"
+                placeholder="https://drive.google.com/file/d/1A2b3C.../view"
+                value={editing.driveUrl || ''}
+                onChange={(driveUrl) => setEditing({ ...editing, driveUrl })}
+              />
+            </Field>
+
+            <Field
               label="What this resume is about"
               hint="Describe focus, strengths, and ideal roles — used for matching."
             >
               <TextArea
                 disabled={disabled}
-                rows={4}
+                rows={3}
                 value={editing.description}
                 placeholder="Full-stack engineer focused on React/Node… best for startup full-stack roles."
                 onChange={(description) => setEditing({ ...editing, description })}
@@ -218,7 +240,7 @@ export function ResumesTab({ disabled }: { disabled?: boolean }) {
               />
             </Field>
 
-            <Field label="PDF file">
+            <Field label="PDF file (Optional if GDrive link is provided)">
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   variant="secondary"
@@ -257,7 +279,7 @@ export function ResumesTab({ disabled }: { disabled?: boolean }) {
       ) : null}
 
       {resumes.length > 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4">
+        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4">
           <h3 className="mb-2 text-sm font-semibold text-slate-800">Test resume match</h3>
           <div className="space-y-3">
             <Field label="Role (optional)">
@@ -280,9 +302,10 @@ export function ResumesTab({ disabled }: { disabled?: boolean }) {
             {rankings.length > 0 ? (
               <ul className="space-y-1 text-sm">
                 {rankings.map((item, index) => (
-                  <li key={item.resume.id} className="text-slate-700">
+                  <li key={item.resume.id} className="text-slate-700 font-medium">
                     {index + 1}. {item.resume.name} — {item.confidence}% match
                     {index === 0 ? ' (recommended)' : ''}
+                    {item.resume.driveUrl ? ' [GDrive available]' : ''}
                   </li>
                 ))}
               </ul>
