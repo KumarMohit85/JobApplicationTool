@@ -19,6 +19,58 @@ async function getActiveTab() {
   return tab;
 }
 
+/**
+ * Try to inject the content script into a tab.
+ * This is needed when the extension was reloaded but tabs were already open
+ * (Chrome doesn't re-inject content scripts into existing tabs).
+ */
+async function ensureContentScript(tabId: number): Promise<boolean> {
+  try {
+    // Try a quick ping first to see if content script is already there
+    const response = await chrome.tabs.sendMessage(tabId, { type: 'PING' } as ExtensionMessage);
+    if (response && typeof response === 'object' && 'ok' in response) {
+      return true;
+    }
+  } catch {
+    // Content script not present — inject it
+  }
+
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['src/content/index.ts'],
+    });
+    // Wait a moment for the script to initialize
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    return true;
+  } catch (err) {
+    console.warn('Failed to inject content script:', err);
+    return false;
+  }
+}
+
+/**
+ * Send a message to the active tab's content script, auto-injecting if needed.
+ */
+async function sendToTab<T extends ExtensionResponse>(
+  tabId: number,
+  message: ExtensionMessage,
+): Promise<T | undefined> {
+  try {
+    return (await chrome.tabs.sendMessage(tabId, message)) as T | undefined;
+  } catch {
+    // First attempt failed — try injecting content script and retry
+    const injected = await ensureContentScript(tabId);
+    if (!injected) return undefined;
+
+    try {
+      return (await chrome.tabs.sendMessage(tabId, message)) as T | undefined;
+    } catch {
+      return undefined;
+    }
+  }
+}
+
 export async function fetchJobContextFromActiveTab(): Promise<{
   context: JobContext | null;
   error?: string;
@@ -31,43 +83,36 @@ export async function fetchJobContextFromActiveTab(): Promise<{
     return { context: null, error: 'Cannot read job details on this page (browser internal URL).' };
   }
 
-  try {
-    const response = (await chrome.tabs.sendMessage(tab.id, {
-      type: 'GET_JOB_CONTEXT',
-    } satisfies ExtensionMessage)) as ExtensionResponse | undefined;
+  const response = await sendToTab<ExtensionResponse>(tab.id, {
+    type: 'GET_JOB_CONTEXT',
+  } satisfies ExtensionMessage);
 
-    if (!isJobContextResponse(response)) {
-      return { context: null, error: 'Content script did not respond. Try refreshing the page.' };
-    }
-    if (response.error) {
-      return { context: null, error: response.error };
-    }
-    if (response.context) {
-      await saveLastJobContext(response.context);
-    }
-    return { context: response.context };
-  } catch {
+  if (!isJobContextResponse(response)) {
     return {
       context: null,
-      error: 'Could not reach this page. Refresh the tab or open a supported job posting.',
+      error:
+        'Content script could not load on this page. Try refreshing the LinkedIn tab, then click Scan page again.',
     };
   }
+  if (response.error) {
+    return { context: null, error: response.error };
+  }
+  if (response.context) {
+    await saveLastJobContext(response.context);
+  }
+  return { context: response.context };
 }
 
 export async function fetchSelectedTextFromActiveTab(): Promise<string> {
   const tab = await getActiveTab();
   if (!tab?.id || isRestrictedUrl(tab.url)) return '';
 
-  try {
-    const response = (await chrome.tabs.sendMessage(tab.id, {
-      type: 'GET_SELECTED_TEXT',
-    } satisfies ExtensionMessage)) as ExtensionResponse | undefined;
+  const response = await sendToTab<ExtensionResponse>(tab.id, {
+    type: 'GET_SELECTED_TEXT',
+  } satisfies ExtensionMessage);
 
-    if (isSelectedTextResponse(response)) {
-      return response.text;
-    }
-  } catch {
-    // ignore
+  if (isSelectedTextResponse(response)) {
+    return response.text;
   }
   return '';
 }
@@ -92,19 +137,15 @@ export async function insertTextToActiveTab(text: string): Promise<{ success: bo
     return { success: false, error: 'Cannot insert text on this page.' };
   }
 
-  try {
-    const response = (await chrome.tabs.sendMessage(tab.id, {
-      type: 'INSERT_TEXT',
-      text,
-    } satisfies ExtensionMessage)) as ExtensionResponse | undefined;
+  const response = await sendToTab<ExtensionResponse>(tab.id, {
+    type: 'INSERT_TEXT',
+    text,
+  } satisfies ExtensionMessage);
 
-    if (isInsertTextResult(response)) {
-      return { success: response.success, error: response.error };
-    }
-    return { success: false, error: 'Content script did not respond. Refresh the page and try again.' };
-  } catch {
-    return { success: false, error: 'Could not insert text. Click the target field on the page first.' };
+  if (isInsertTextResult(response)) {
+    return { success: response.success, error: response.error };
   }
+  return { success: false, error: 'Content script did not respond. Refresh the page and try again.' };
 }
 
 function isLinkedInPostCaptureResponse(
@@ -125,22 +166,18 @@ export async function captureLinkedInPostFromActiveTab(): Promise<{
     return { capture: null, error: 'Open a LinkedIn feed post first.' };
   }
 
-  try {
-    const response = (await chrome.tabs.sendMessage(tab.id, {
-      type: 'CAPTURE_LINKEDIN_POST',
-    } satisfies ExtensionMessage)) as ExtensionResponse | undefined;
+  const response = await sendToTab<ExtensionResponse>(tab.id, {
+    type: 'CAPTURE_LINKEDIN_POST',
+  } satisfies ExtensionMessage);
 
-    if (!isLinkedInPostCaptureResponse(response)) {
-      return { capture: null, error: 'Content script did not respond. Refresh LinkedIn and try again.' };
-    }
-    if (response.error) {
-      return { capture: null, error: response.error };
-    }
-    if (!response.capture) {
-      return { capture: null, error: 'No hiring post detected. Scroll to a post with an email or role.' };
-    }
-    return { capture: response.capture };
-  } catch {
-    return { capture: null, error: 'Could not read LinkedIn. Refresh the page and try again.' };
+  if (!isLinkedInPostCaptureResponse(response)) {
+    return { capture: null, error: 'Content script did not respond. Refresh LinkedIn and try again.' };
   }
+  if (response.error) {
+    return { capture: null, error: response.error };
+  }
+  if (!response.capture) {
+    return { capture: null, error: 'No hiring post detected. Scroll to a post with an email or role.' };
+  }
+  return { capture: response.capture };
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { JobContext } from '@/types/job';
-import { loadLastJobContext, mergeDescription, saveLastJobContext } from '@/lib/job-context';
+import { loadLastJobContext, saveLastJobContext } from '@/lib/job-context';
 import { fetchJobContextFromActiveTab, fetchSelectedTextFromActiveTab } from '@/lib/tab-messages';
 
 type UseJobContextState = {
@@ -55,21 +55,17 @@ export function useJobContext(autoLoad = true): UseJobContextState {
       return false;
     }
 
-    setContext((prev) => {
-      const base =
-        prev ??
-        ({
-          title: '',
-          company: '',
-          description: '',
-          url: '',
-          source: 'manual',
-          extractedAt: new Date().toISOString(),
-        } satisfies JobContext);
-      const merged = mergeDescription(base, selected);
-      void saveLastJobContext(merged);
-      return merged;
-    });
+    // Replace the context entirely with the new selection
+    const newContext: JobContext = {
+      title: 'Selected Job Post',
+      company: '',
+      description: selected,
+      url: '',
+      source: 'manual',
+      extractedAt: new Date().toISOString(),
+    };
+    void saveLastJobContext(newContext);
+    setContext(newContext);
     setError(null);
     return true;
   }, []);

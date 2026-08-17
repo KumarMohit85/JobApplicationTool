@@ -38,17 +38,74 @@ export type GistResumePackage = ResumeVariant & {
   base64Pdf?: string | null;
 };
 
+// ─── Auto-Discover Existing Gist ──────────────────────────────────────────────
+
+/**
+ * Search user's GitHub Gists for an existing Gist containing applykit-profile.json.
+ * Prevents creating duplicate Gists on extension reinstall or multi-device setup.
+ */
+export async function findExistingApplyKitGist(token: string): Promise<string | null> {
+  try {
+    const response = await fetch(`${GIST_API}?per_page=100`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    });
+
+    if (!response.ok) return null;
+
+    const gists = (await response.json()) as Array<{
+      id: string;
+      updated_at?: string;
+      files?: Record<string, { raw_url?: string; size?: number }>;
+    }>;
+
+    // Filter gists that contain applykit-profile.json
+    const matchingGists = gists.filter(
+      (g) => g.files && GIST_PROFILE_FILE in g.files,
+    );
+
+    if (matchingGists.length === 0) return null;
+
+    // Sort by updated_at descending (newest / most active Gist first)
+    matchingGists.sort((a, b) => {
+      const timeA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const timeB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      return timeB - timeA;
+    });
+
+    // Return the Gist ID of the best match
+    return matchingGists[0].id;
+  } catch (err) {
+    console.warn('Failed to discover existing Gist:', err);
+    return null;
+  }
+}
+
 // ─── GitHub Gist ──────────────────────────────────────────────────────────────
 
 /**
  * Push profile JSON + Resume PDFs (Base64) to a GitHub Gist.
- * Returns the gistId for future updates.
+ * If no gistId is supplied, automatically searches for an existing ApplyKit Gist first.
+ * Returns the gistId.
  */
 export async function pushProfileToGist(
   profile: Profile,
   token: string,
   gistId?: string,
 ): Promise<string> {
+  let targetGistId = gistId?.trim();
+
+  // If no Gist ID stored, check if the user already has an ApplyKit Gist on GitHub
+  if (!targetGistId) {
+    const existing = await findExistingApplyKitGist(token);
+    if (existing) {
+      targetGistId = existing;
+    }
+  }
+
   const profileContent = JSON.stringify(profile, null, 2);
 
   // Bundle resumes and their PDF blobs
@@ -82,8 +139,8 @@ export async function pushProfileToGist(
     },
   });
 
-  const url = gistId ? `${GIST_API}/${gistId}` : GIST_API;
-  const method = gistId ? 'PATCH' : 'POST';
+  const url = targetGistId ? `${GIST_API}/${targetGistId}` : GIST_API;
+  const method = targetGistId ? 'PATCH' : 'POST';
 
   const response = await fetch(url, {
     method,
@@ -113,9 +170,24 @@ export async function pushProfileToGist(
 
 /**
  * Pull profile JSON and restore Resume PDFs from a GitHub Gist by ID.
+ * If no gistId is supplied, automatically searches for an existing ApplyKit Gist first.
  */
-export async function pullProfileFromGist(token: string, gistId: string): Promise<Profile> {
-  const response = await fetch(`${GIST_API}/${gistId}`, {
+export async function pullProfileFromGist(
+  token: string,
+  gistId?: string,
+): Promise<{ profile: Profile; gistId: string }> {
+  let targetGistId = gistId?.trim();
+
+  if (!targetGistId) {
+    const existing = await findExistingApplyKitGist(token);
+    if (existing) {
+      targetGistId = existing;
+    } else {
+      throw new Error('No existing ApplyKit Gist found on your GitHub account. Push your profile first.');
+    }
+  }
+
+  const response = await fetch(`${GIST_API}/${targetGistId}`, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/vnd.github+json',
@@ -176,7 +248,10 @@ export async function pullProfileFromGist(token: string, gistId: string): Promis
     }
   }
 
-  return normalizeProfile(parsedProfile as Partial<Profile>);
+  return {
+    profile: normalizeProfile(parsedProfile as Partial<Profile>),
+    gistId: targetGistId,
+  };
 }
 
 // ─── Read-only URL ────────────────────────────────────────────────────────────

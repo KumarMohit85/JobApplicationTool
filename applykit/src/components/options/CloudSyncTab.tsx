@@ -228,8 +228,7 @@ export function CloudSyncTab({ profile, onProfilePulled }: CloudSyncTabProps) {
 
       {canPull && op === 'idle' && (
         <p className="text-xs text-slate-400">
-          Pulling will update your profile in memory. Click{' '}
-          <span className="font-medium">Save profile</span> at the top to persist it.
+          Pulling automatically restores and saves your profile data and resume PDFs locally.
         </p>
       )}
     </div>

@@ -130,7 +130,7 @@ export function QueueTab() {
                 <th className="px-3 py-2">Type</th>
                 <th className="px-3 py-2">Company</th>
                 <th className="px-3 py-2">Role</th>
-                <th className="px-3 py-2">Email</th>
+                <th className="px-3 py-2">Email / Apply</th>
                 <th className="px-3 py-2">Status</th>
                 <th className="px-3 py-2">Actions</th>
               </tr>
@@ -138,35 +138,58 @@ export function QueueTab() {
             <tbody>
               {items.map((item) => (
                 <tr key={item.id} className="border-t border-slate-100">
-                  <td className="px-3 py-2">{item.type === 'linkedin_mail' ? 'Mail' : 'Job'}</td>
-                  <td className="px-3 py-2">{item.company || '—'}</td>
+                  <td className="px-3 py-2">{item.type === 'linkedin_mail' ? '📧 Mail' : '🔗 Apply'}</td>
+                  <td className="px-3 py-2 font-medium">{item.company || '—'}</td>
                   <td className="px-3 py-2">{item.role || '—'}</td>
-                  <td className="px-3 py-2">{item.email || '—'}</td>
-                  <td className="px-3 py-2">{item.status}</td>
+                  <td className="max-w-[200px] truncate px-3 py-2">
+                    {item.email ? (
+                      <a href={`mailto:${item.email}`} className="text-indigo-600 hover:underline">{item.email}</a>
+                    ) : item.applyUrl ? (
+                      <a href={item.applyUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{item.applyUrl.slice(0, 40)}…</a>
+                    ) : '—'}
+                  </td>
+                  <td className="px-3 py-2">
+                    <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${
+                      item.status === 'sent' ? 'bg-green-100 text-green-700' :
+                      item.status === 'applied' ? 'bg-blue-100 text-blue-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>{item.status}</span>
+                  </td>
                   <td className="px-3 py-2">
                     <div className="flex flex-wrap gap-2">
-                      {item.type === 'linkedin_mail' && item.status === 'pending' ? (
+                      {item.type === 'linkedin_mail' && item.email && item.status === 'pending' ? (
                         <button
                           type="button"
-                          className="text-xs text-indigo-600 hover:underline"
+                          className="rounded bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700"
                           disabled={sendingId === item.id}
                           onClick={() => void sendMail(item)}
                         >
-                          {sendingId === item.id ? 'Opening…' : 'Send'}
+                          {sendingId === item.id ? 'Opening…' : '📧 Send email'}
                         </button>
+                      ) : null}
+                      {item.applyUrl && item.status === 'pending' ? (
+                        <a
+                          href={item.applyUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                          onClick={() => void markSent(item.id)}
+                        >
+                          🔗 Apply
+                        </a>
                       ) : null}
                       {item.status === 'pending' ? (
                         <button
                           type="button"
-                          className="text-xs text-indigo-600 hover:underline"
+                          className="text-xs text-slate-500 hover:underline"
                           onClick={() => void markSent(item.id)}
                         >
-                          Mark sent
+                          Mark done
                         </button>
                       ) : null}
                       <button
                         type="button"
-                        className="text-xs text-red-600 hover:underline"
+                        className="text-xs text-red-500 hover:underline"
                         onClick={() => void remove(item.id)}
                       >
                         Delete

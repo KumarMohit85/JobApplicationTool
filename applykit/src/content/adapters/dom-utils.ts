@@ -25,6 +25,21 @@ export function largestTextBlock(root: ParentNode, minLength = 200): string {
   let best = '';
   const candidates = root.querySelectorAll('section, article, main, div, p');
   for (const el of candidates) {
+    // Ignore navigation, header, footer, sidebars, and comments
+    if (el.closest('nav, header, footer, aside, .sidebar, #sidebar, .comments, #header, #footer')) {
+      continue;
+    }
+    // Ignore top-level body/root containers that bundle the whole page
+    if (
+      el === document.body ||
+      el.id === 'app' ||
+      el.id === 'root' ||
+      el.id === '__next' ||
+      el.tagName === 'MAIN'
+    ) {
+      continue;
+    }
+
     const text = textOf(el);
     if (text.length > best.length && text.length >= minLength) {
       best = text;

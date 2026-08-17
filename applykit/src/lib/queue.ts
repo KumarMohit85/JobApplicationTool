@@ -17,6 +17,7 @@ function normalizeQueueItem(input: Partial<QueueItem>): QueueItem | null {
       ? (input.status as QueueStatus)
       : 'pending',
     email: typeof input.email === 'string' ? input.email.trim() : undefined,
+    applyUrl: typeof input.applyUrl === 'string' ? input.applyUrl.trim() : undefined,
     company,
     role,
     description: typeof input.description === 'string' ? input.description : '',
@@ -66,6 +67,7 @@ export function isQueueDuplicate(
 export async function addQueueItem(input: {
   type: QueueItemType;
   email?: string;
+  applyUrl?: string;
   company: string;
   role: string;
   description: string;

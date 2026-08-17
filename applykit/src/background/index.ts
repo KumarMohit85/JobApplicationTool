@@ -86,8 +86,11 @@ async function handleCloudPull(): Promise<{ ok: boolean; profile?: Profile; erro
 
     if (settings.provider === 'github_gist') {
       if (!token) return { ok: false, error: 'GitHub token not configured.' };
-      if (!settings.gistId) return { ok: false, error: 'Gist ID not set. Push your profile first.' };
-      pulled = await pullProfileFromGist(token, settings.gistId);
+      const res = await pullProfileFromGist(token, settings.gistId);
+      pulled = res.profile;
+      if (res.gistId && res.gistId !== settings.gistId) {
+        settings.gistId = res.gistId;
+      }
     } else if (settings.provider === 'url') {
       if (!settings.profileUrl) return { ok: false, error: 'Profile URL not configured.' };
       pulled = await pullProfileFromUrl(settings.profileUrl);
@@ -95,9 +98,8 @@ async function handleCloudPull(): Promise<{ ok: boolean; profile?: Profile; erro
 
     if (!pulled) return { ok: false, error: 'No profile data returned from cloud.' };
 
-    if (settings.cacheLocally) {
-      await saveProfile(pulled);
-    }
+    // Always save pulled profile to local storage so all UI fields populate
+    await saveProfile(pulled);
 
     const updated: CloudSyncSettings = { ...settings, lastSyncedAt: new Date().toISOString() };
     await chrome.storage.local.set({ [CLOUD_SYNC_STORAGE_KEY]: updated });

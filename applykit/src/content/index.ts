@@ -11,6 +11,11 @@ if (/linkedin\.com/i.test(window.location.hostname)) {
 
 chrome.runtime.onMessage.addListener(
   (message: ExtensionMessage, _sender, sendResponse: (response: ExtensionResponse) => void) => {
+    if (message?.type === 'PING') {
+      sendResponse({ ok: true, version: '0.1.0' });
+      return true;
+    }
+
     if (message?.type === 'GET_JOB_CONTEXT') {
       try {
         const context = extractJobContextFromPage();

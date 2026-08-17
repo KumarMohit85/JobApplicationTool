@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useProfile } from '@/hooks/useProfile';
+import { saveProfile } from '@/lib/profile';
 import { PersonalTab } from '@/components/options/PersonalTab';
 import { SkillsTab } from '@/components/options/SkillsTab';
 import { ResumesTab } from '@/components/options/ResumesTab';
@@ -140,10 +141,10 @@ export default function OptionsApp() {
               {activeTab === 'cloud' ? (
                 <CloudSyncTab
                   profile={profile}
-                  onProfilePulled={(pulled) => {
-                    setProfile(pulled);
-                    markDirty();
-                    setSaveMessage('Profile pulled from cloud — click Save to persist.');
+                  onProfilePulled={async (pulled) => {
+                    await saveProfile(pulled);
+                    await reload();
+                    setSaveMessage('Profile & resumes pulled from cloud and saved successfully!');
                   }}
                 />
               ) : null}

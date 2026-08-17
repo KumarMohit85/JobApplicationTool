@@ -133,6 +133,8 @@ export function useCloudSync(): UseCloudSyncState {
         setError(response.error ?? 'Pull failed.');
         return null;
       }
+      // Reload settings in case gistId was auto-discovered
+      await reload();
       setSuccessMessage(
         `Profile pulled from cloud. Last synced: ${new Date().toLocaleTimeString()}`,
       );

@@ -7,6 +7,7 @@ export type QueueItem = {
   type: QueueItemType;
   status: QueueStatus;
   email?: string;
+  applyUrl?: string;
   company: string;
   role: string;
   description: string;

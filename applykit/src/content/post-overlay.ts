@@ -162,28 +162,56 @@ function showSaveModal(
 }
 
 async function quickSavePost(capture: LinkedInPostCapture): Promise<void> {
-  const email = capture.emails[0];
-  if (!email) {
-    // If no email found automatically, open modal to let user input it
-    showSaveModal(capture);
+  // Use smart parser to extract structured job entries
+  const { parseHiringPost } = await import('@/lib/post-parser');
+  const entries = parseHiringPost(capture.description, capture.sourceUrl);
+
+  if (entries.length === 0) {
+    // No structured data found — try basic save with email
+    const email = capture.emails[0];
+    if (!email) {
+      showSaveModal(capture);
+      return;
+    }
+    const { item, duplicate } = await addQueueItem({
+      type: 'linkedin_mail',
+      email,
+      company: capture.company || 'Hiring Company',
+      role: capture.role || 'Open Position',
+      description: capture.description,
+      sourceUrl: capture.sourceUrl,
+    });
+    if (duplicate) {
+      showToast(`Already in mail queue: ${email}`, false);
+    } else if (item) {
+      showToast(`Saved to mail queue! (${email})`, true);
+    } else {
+      showToast('Failed to save to mail queue.', false);
+    }
     return;
   }
 
-  const { item, duplicate } = await addQueueItem({
-    type: 'linkedin_mail',
-    email,
-    company: capture.company || 'Hiring Company',
-    role: capture.role || 'Open Position',
-    description: capture.description,
-    sourceUrl: capture.sourceUrl,
-  });
+  // Queue all parsed entries
+  let added = 0;
+  let dupes = 0;
+  for (const job of entries) {
+    const { item, duplicate } = await addQueueItem({
+      type: job.email ? 'linkedin_mail' : 'job_scan',
+      email: job.email || undefined,
+      applyUrl: job.applyUrl || undefined,
+      company: job.company,
+      role: job.role,
+      description: job.description,
+      sourceUrl: job.sourceUrl || capture.sourceUrl,
+    });
+    if (duplicate) dupes++;
+    else if (item) added++;
+  }
 
-  if (duplicate) {
-    showToast(`Already in mail queue: ${email}`, false);
-  } else if (item) {
-    showToast(`Saved to mail queue! (${email})`, true);
+  if (added > 0) {
+    showToast(`⚡ Queued ${added} job(s)!${dupes > 0 ? ` (${dupes} dups)` : ''}`, true);
   } else {
-    showToast('Failed to save to mail queue.', false);
+    showToast(`All ${dupes} job(s) already in queue.`, false);
   }
 }
 
