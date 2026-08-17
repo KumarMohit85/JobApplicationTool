@@ -41,15 +41,18 @@ export function EmailComposerModal({
   useEffect(() => {
     void listResumes().then((list) => {
       setResumes(list);
-      if (!selectedResumeId && list.length > 0) {
-        setSelectedResumeId(list[0].id);
+      const active = list.find((r) => r.id === selectedResumeId) || list[0];
+      if (!selectedResumeId && active) {
+        setSelectedResumeId(active.id);
       }
-    });
 
-    // Default basic email body
-    const initialBody = `Dear Hiring Team at ${item.company},\n\nI am writing to express my strong interest in the ${item.role} position.\n\n${profile.summary ? profile.summary + '\n\n' : ''}I have attached my resume for your review. I would welcome the opportunity to discuss how my background aligns with your requirements.\n\nBest regards,\n${profile.personal.fullName || 'Applicant'}\n${profile.personal.linkedIn ? 'LinkedIn: ' + profile.personal.linkedIn + '\n' : ''}${profile.personal.phone ? 'Phone: ' + profile.personal.phone : ''}`;
-    setBody(initialBody);
-  }, [item, profile, selectedResumeId]);
+      const gdriveLine = active?.driveUrl
+        ? `\n\nYou can also view my resume on Google Drive here: ${active.driveUrl}`
+        : '';
+      const initialBody = `Dear Hiring Team at ${item.company},\n\nI am writing to express my strong interest in the ${item.role} position.\n\n${profile.summary ? profile.summary + '\n\n' : ''}I have attached my resume for your review.${gdriveLine}\n\nI would welcome the opportunity to discuss how my background aligns with your requirements.\n\nBest regards,\n${profile.personal.fullName || 'Applicant'}\n${profile.personal.linkedIn ? 'LinkedIn: ' + profile.personal.linkedIn + '\n' : ''}${profile.personal.phone ? 'Phone: ' + profile.personal.phone : ''}`;
+      setBody(initialBody);
+    });
+  }, [item, profile]);
 
   const handleGenerateAi = async () => {
     setGenerating(true);
@@ -96,6 +99,14 @@ export function EmailComposerModal({
       setStatus({ message: err instanceof Error ? err.message : 'AI generation error.', tone: 'error' });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleSelectResume = (id: string) => {
+    setSelectedResumeId(id);
+    const chosen = resumes.find((r) => r.id === id);
+    if (chosen?.driveUrl && !body.includes(chosen.driveUrl)) {
+      setBody((prev) => `${prev}\n\nYou can also view my resume on Google Drive here: ${chosen.driveUrl}`);
     }
   };
 
@@ -218,7 +229,7 @@ export function EmailComposerModal({
                   type="button"
                   onClick={() => {
                     const driveUrl = resumes.find((r) => r.id === selectedResumeId)?.driveUrl;
-                    if (driveUrl) {
+                    if (driveUrl && !body.includes(driveUrl)) {
                       setBody((prev) => `${prev}\n\nYou can also view my resume on Google Drive here: ${driveUrl}`);
                     }
                   }}
@@ -230,7 +241,7 @@ export function EmailComposerModal({
             </div>
             <select
               value={selectedResumeId}
-              onChange={(e) => setSelectedResumeId(e.target.value)}
+              onChange={(e) => handleSelectResume(e.target.value)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
             >
               {resumes.length === 0 ? (

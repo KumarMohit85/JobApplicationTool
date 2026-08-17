@@ -53,6 +53,7 @@ export async function prepareMailSend(
     job,
     matchedSkillNames: skillMatch.matched.map((m) => m.skill.name),
     resumeName: resumeMatch?.name,
+    driveUrl: resumeMatch?.driveUrl,
   });
 
   const compose: PendingCompose = {

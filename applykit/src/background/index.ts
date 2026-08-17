@@ -50,7 +50,11 @@ async function loadGithubToken(): Promise<string> {
 
 async function handleAiGenerate(request: AiGenerateRequest): Promise<AiGenerateResponse> {
   const settings = await loadAiSettings();
-  return callGemini(settings, request);
+  const reqWithPrompt: AiGenerateRequest = {
+    ...request,
+    customEmailPrompt: request.customEmailPrompt || settings.customEmailPrompt,
+  };
+  return callGemini(settings, reqWithPrompt);
 }
 
 async function handleAiTest(): Promise<AiGenerateResponse> {

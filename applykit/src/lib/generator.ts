@@ -8,6 +8,7 @@ export type GenerateInput = {
   job: JobContext;
   matchedSkillNames: string[];
   resumeName?: string;
+  driveUrl?: string;
 };
 
 function fillTemplate(template: string, vars: Record<string, string>): string {
@@ -95,16 +96,20 @@ Best regards,
 }
 
 function buildColdEmail(input: GenerateInput, fitParagraph: string): GeneratedContent['coldEmail'] {
-  const { profile, job, resumeName } = input;
+  const { profile, job, resumeName, driveUrl } = input;
   const role = job.title || 'the open position';
   const company = job.company || 'your company';
   const yourName = profile.personal.fullName || 'Applicant';
 
   const subject = `Application for ${role}${company ? ` — ${company}` : ''} — ${yourName}`;
 
-  const resumeLine = resumeName
+  let resumeLine = resumeName
     ? `Please find my resume (${resumeName}) attached for your review.`
     : 'Please find my resume attached for your review.';
+
+  if (driveUrl?.trim()) {
+    resumeLine += ` You can also view my resume online at: ${driveUrl.trim()}`;
+  }
 
   const bodyTemplate = `Dear Hiring Team,
 

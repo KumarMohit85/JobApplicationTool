@@ -33,6 +33,7 @@ export type AiGenerateRequest = {
   resumes: AiResumeSummary[];
   selectedResumeId?: string;
   mode: 'content' | 'review';
+  customEmailPrompt?: string;
 };
 
 export type AiGenerateResponse = {

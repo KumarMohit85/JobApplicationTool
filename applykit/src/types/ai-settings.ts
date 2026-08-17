@@ -6,6 +6,7 @@ export type AiSettings = {
   enabled: boolean;
   apiKey: string;
   model: string;
+  customEmailPrompt?: string;
 };
 
 export function createDefaultAiSettings(): AiSettings {
@@ -13,5 +14,7 @@ export function createDefaultAiSettings(): AiSettings {
     enabled: false,
     apiKey: '',
     model: DEFAULT_GEMINI_MODEL,
+    customEmailPrompt:
+      'Keep the email concise (120-180 words), direct, and engaging. Highlight top matching skills between the candidate profile and the job description. End with a polite request for a brief intro call.',
   };
 }

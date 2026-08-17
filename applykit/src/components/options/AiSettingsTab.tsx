@@ -186,6 +186,24 @@ export function AiSettingsTab() {
         </p>
       </div>
 
+      {/* Custom Email System Prompt / Guidelines Editor */}
+      <div className="space-y-2 rounded-lg border border-purple-100 bg-purple-50/50 p-4">
+        <label className="block text-sm font-semibold text-purple-900" htmlFor="ai-custom-prompt">
+          ✍️ Custom Cold Email System Prompt & AI Training Instructions
+        </label>
+        <p className="text-xs text-purple-700">
+          Train/instruct the AI on how to compose emails for your applications. Custom instructions override default generation rules.
+        </p>
+        <textarea
+          id="ai-custom-prompt"
+          rows={4}
+          value={settings.customEmailPrompt || ''}
+          onChange={(e) => setSettings({ customEmailPrompt: e.target.value })}
+          placeholder="e.g. Keep emails under 140 words. Direct, professional tone. Highlight my 3+ years in backend microservices. Ask if they have 10 minutes for a quick chat."
+          className="w-full rounded-lg border border-purple-200 bg-white p-3 text-sm text-slate-900 shadow-xs outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-200"
+        />
+      </div>
+
       {/* Privacy note */}
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
         <strong>Privacy:</strong> When you use AI features, your profile summary, matched skills,

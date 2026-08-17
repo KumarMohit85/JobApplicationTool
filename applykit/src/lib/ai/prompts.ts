@@ -6,20 +6,24 @@ function trimJobDescription(description: string, max = 6000): string {
 }
 
 export function buildAiPrompt(request: AiGenerateRequest): string {
-  const { profile, job, matchedSkillNames, resumes, selectedResumeId, mode } = request;
+  const { profile, job, matchedSkillNames, resumes, selectedResumeId, mode, customEmailPrompt } = request;
 
   const resumeLines = resumes.map(
     (r) =>
       `- id: ${r.id} | name: ${r.name} | roles: ${r.targetRoles.join(', ') || 'n/a'} | skills: ${r.skills.slice(0, 12).join(', ')} | description: ${r.description.slice(0, 400)}`,
   );
 
+  const customInstructions = customEmailPrompt?.trim()
+    ? `\nUSER CUSTOM SYSTEM PROMPT & INSTRUCTIONS FOR COLD EMAIL & APPLICATION COPY:\n"${customEmailPrompt.trim()}"\n`
+    : '';
+
   const base = `You are an expert job application assistant. Write professional, concise, honest copy. Never invent employers, degrees, or skills not supported by the profile.
 
-JOB
+JOB DESCRIPTION & REQUIREMENTS:
 - Title: ${job.title || 'Unknown'}
 - Company: ${job.company || 'Unknown'}
 - URL: ${job.url || 'n/a'}
-- Description:
+- Description / Required Skills:
 ${trimJobDescription(job.description || job.title || 'No description provided.')}
 
 CANDIDATE PROFILE
@@ -58,7 +62,7 @@ Rules:
   }
 
   return `${base}
-
+${customInstructions}
 TASK: Generate tailored application copy. Return JSON only (no markdown):
 {
   "fitParagraph": "2-3 sentences on fit",
@@ -71,7 +75,7 @@ TASK: Generate tailored application copy. Return JSON only (no markdown):
 
 Rules:
 - Use the candidate's real name in sign-off
-- Keep cold email under 220 words
+- Strictly adhere to the USER CUSTOM SYSTEM PROMPT & INSTRUCTIONS provided above
 - Do not claim skills not in profile or matched skills
 - Prefer the selected resume name when mentioning attachment`;
 }
