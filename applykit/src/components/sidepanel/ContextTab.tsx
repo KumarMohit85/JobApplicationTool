@@ -35,21 +35,39 @@ export function ContextTab({
   } | null>(null);
   const [queueing, setQueueing] = useState(false);
 
-  // Parse jobs from current context description
-  const handleParseJobs = () => {
+  const [parsing, setParsing] = useState(false);
+
+  // Parse jobs using AI / Smart parser
+  const handleParseJobs = async () => {
     if (!context?.description) return;
-    const entries = parseHiringPost(context.description, context.url);
-    setParsedJobs(entries);
-    if (entries.length === 0) {
-      setQueueStatus({
-        message: 'No actionable jobs found (need email or apply link).',
-        tone: 'info',
-      });
-    } else {
-      setQueueStatus({
-        message: `Found ${entries.length} job(s) with apply info.`,
-        tone: 'info',
-      });
+    setParsing(true);
+    try {
+      const res = (await chrome.runtime.sendMessage({
+        type: 'AI_PARSE_POST',
+        rawText: context.description,
+        sourceUrl: context.url,
+      })) as { ok: boolean; jobs?: ParsedJobEntry[]; source?: 'ai' | 'local' };
+
+      const entries = res.jobs || parseHiringPost(context.description, context.url);
+      setParsedJobs(entries);
+
+      const sourceLabel = res.source === 'ai' ? '✨ AI' : 'Smart Parser';
+      if (entries.length === 0) {
+        setQueueStatus({
+          message: `${sourceLabel}: No actionable jobs found.`,
+          tone: 'info',
+        });
+      } else {
+        setQueueStatus({
+          message: `${sourceLabel} extracted ${entries.length} job(s)!`,
+          tone: 'info',
+        });
+      }
+    } catch {
+      const entries = parseHiringPost(context.description, context.url);
+      setParsedJobs(entries);
+    } finally {
+      setParsing(false);
     }
   };
 
@@ -177,10 +195,11 @@ export function ContextTab({
                 <p className="text-xs font-semibold text-purple-900">🎯 Hiring post detected</p>
                 <button
                   type="button"
-                  onClick={handleParseJobs}
-                  className="rounded-md bg-purple-600 px-3 py-1 text-xs font-medium text-white hover:bg-purple-700"
+                  disabled={parsing}
+                  onClick={() => void handleParseJobs()}
+                  className="rounded-md bg-purple-600 px-3 py-1 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50"
                 >
-                  Extract jobs
+                  {parsing ? '✨ AI Extracting…' : '✨ Extract jobs'}
                 </button>
               </div>
 

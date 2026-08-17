@@ -51,7 +51,7 @@ export function useJobContext(autoLoad = true): UseJobContextState {
   const appendSelection = useCallback(async (): Promise<boolean> => {
     const selected = await fetchSelectedTextFromActiveTab();
     if (!selected) {
-      setError('No text selected on the page. Highlight a job description first.');
+      setError('No text selected on the page. Highlight a job description or scroll to a post first.');
       return false;
     }
 

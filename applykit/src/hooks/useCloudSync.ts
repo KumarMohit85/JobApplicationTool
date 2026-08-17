@@ -19,6 +19,10 @@ type UseCloudSyncState = {
   setSettings: (partial: Partial<CloudSyncSettings>) => void;
   setGithubToken: (token: string) => void;
   save: () => Promise<boolean>;
+  connect: (
+    overrideToken?: string,
+    overrideRepo?: string,
+  ) => Promise<{ pulledProfile?: Profile } | null>;
   push: (profile: Profile) => Promise<boolean>;
   pull: () => Promise<{ profile: Profile } | null>;
   reload: () => Promise<void>;
@@ -84,12 +88,55 @@ export function useCloudSync(): UseCloudSyncState {
     }
   }, [settings, githubToken]);
 
+  const connect = useCallback(
+    async (
+      overrideToken?: string,
+      overrideRepo?: string,
+    ): Promise<{ pulledProfile?: Profile } | null> => {
+      setOp('pulling');
+      setError(null);
+      setSuccessMessage(null);
+
+      const targetToken = overrideToken || githubToken;
+      const targetRepo = overrideRepo || settings.repo || 'applykit-backup';
+
+      try {
+        const response = (await chrome.runtime.sendMessage({
+          type: 'CLOUD_CONNECT',
+          token: targetToken,
+          repoName: targetRepo,
+        })) as {
+          ok: boolean;
+          owner?: string;
+          repo?: string;
+          pulledProfile?: Profile;
+          message?: string;
+          error?: string;
+        };
+
+        if (!response.ok) {
+          setError(response.error ?? 'Connect failed.');
+          return null;
+        }
+
+        await reload();
+        setSuccessMessage(response.message || 'Connected to GitHub repository cloud sync!');
+        return { pulledProfile: response.pulledProfile };
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Connect failed.');
+        return null;
+      } finally {
+        setOp('idle');
+      }
+    },
+    [githubToken, settings.repo, reload],
+  );
+
   const push = useCallback(
     async (profile: Profile): Promise<boolean> => {
       setOp('pushing');
       setError(null);
       setSuccessMessage(null);
-      // Save latest settings/token first so background uses them
       await save();
       try {
         const response = (await chrome.runtime.sendMessage({
@@ -101,7 +148,6 @@ export function useCloudSync(): UseCloudSyncState {
           setError(response.error ?? 'Push failed.');
           return false;
         }
-        // Update gistId if newly created
         if (response.gistId && response.gistId !== settings.gistId) {
           setSettingsState((prev) => ({ ...prev, gistId: response.gistId }));
         }
@@ -133,7 +179,6 @@ export function useCloudSync(): UseCloudSyncState {
         setError(response.error ?? 'Pull failed.');
         return null;
       }
-      // Reload settings in case gistId was auto-discovered
       await reload();
       setSuccessMessage(
         `Profile pulled from cloud. Last synced: ${new Date().toLocaleTimeString()}`,
@@ -145,7 +190,7 @@ export function useCloudSync(): UseCloudSyncState {
     } finally {
       setOp('idle');
     }
-  }, [save]);
+  }, [save, reload]);
 
   return {
     settings,
@@ -157,6 +202,7 @@ export function useCloudSync(): UseCloudSyncState {
     setSettings,
     setGithubToken,
     save,
+    connect,
     push,
     pull,
     reload,

@@ -24,10 +24,11 @@ export const GITHUB_TOKEN_STORAGE_KEY = 'applykit_github_token';
 export function createDefaultCloudSyncSettings(): CloudSyncSettings {
   return {
     enabled: false,
-    provider: 'github_gist',
+    provider: 'github_repo',
     cacheLocally: true,
     cloudPrimary: false,
-    path: 'applykit-profile.json',
+    repo: 'applykit-backup',
+    path: 'profile.json',
     branch: 'main',
   };
 }

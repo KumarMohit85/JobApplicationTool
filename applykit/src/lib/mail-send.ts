@@ -17,13 +17,14 @@ function buildGmailComposeUrl(compose: PendingCompose): string {
   return `https://mail.google.com/mail/?${params.toString()}`;
 }
 
-export async function prepareMailSend(item: QueueItem): Promise<{
+export async function prepareMailSend(
+  item: QueueItem,
+  overrideBody?: string,
+  overrideSubject?: string,
+): Promise<{
   success: boolean;
   message: string;
 }> {
-  if (item.type !== 'linkedin_mail') {
-    return { success: false, message: 'Send assist is for mail queue items only.' };
-  }
   if (!item.email?.trim()) {
     return { success: false, message: 'Queue item is missing an email address.' };
   }
@@ -56,8 +57,8 @@ export async function prepareMailSend(item: QueueItem): Promise<{
 
   const compose: PendingCompose = {
     to: item.email.trim(),
-    subject: generated.coldEmail.subject,
-    body: generated.coldEmail.body,
+    subject: overrideSubject || generated.coldEmail.subject,
+    body: overrideBody || generated.coldEmail.body,
     resumeFileName: resumeMatch?.fileName,
   };
 

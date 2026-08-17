@@ -48,6 +48,11 @@ export async function listQueue(): Promise<QueueItem[]> {
 async function saveQueueList(items: QueueItem[]): Promise<QueueItem[]> {
   const normalized = normalizeQueueList(items);
   await chrome.storage.local.set({ [QUEUE_STORAGE_KEY]: normalized });
+  try {
+    void chrome.runtime.sendMessage({ type: 'CLOUD_PUSH_QUEUE', queueItems: normalized });
+  } catch {
+    // silent fallback
+  }
   return normalized;
 }
 

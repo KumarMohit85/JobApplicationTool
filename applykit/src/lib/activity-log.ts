@@ -9,7 +9,7 @@ const MAX_ENTRIES = 500;
 
 function normalizeEntry(input: Partial<ActivityEntry>): ActivityEntry | null {
   const action = input.action;
-  if (!action || !['easy_apply_fill', 'form_fill', 'email_sent', 'queued'].includes(action)) {
+  if (!action || !['easy_apply_fill', 'form_fill', 'email_sent', 'job_applied', 'queued'].includes(action)) {
     return null;
   }
 
@@ -55,5 +55,6 @@ export const ACTIVITY_LABELS: Record<ActivityAction, string> = {
   easy_apply_fill: 'Easy Apply fill',
   form_fill: 'Form fill',
   email_sent: 'Email sent',
+  job_applied: 'Direct link applied',
   queued: 'Saved to queue',
 };

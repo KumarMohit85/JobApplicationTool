@@ -57,6 +57,8 @@ export default function OptionsApp() {
     const ok = await persist();
     if (ok) {
       setSaveMessage('Profile saved successfully.');
+      // Auto-push to cloud in background if enabled
+      void chrome.runtime.sendMessage({ type: 'CLOUD_PUSH', profile });
     }
   };
 

@@ -162,9 +162,27 @@ function showSaveModal(
 }
 
 async function quickSavePost(capture: LinkedInPostCapture): Promise<void> {
-  // Use smart parser to extract structured job entries
-  const { parseHiringPost } = await import('@/lib/post-parser');
-  const entries = parseHiringPost(capture.description, capture.sourceUrl);
+  type ParsedJobEntry = import('@/lib/post-parser').ParsedJobEntry;
+  let entries: ParsedJobEntry[] = [];
+
+  try {
+    const res = (await chrome.runtime.sendMessage({
+      type: 'AI_PARSE_POST',
+      rawText: capture.description,
+      sourceUrl: capture.sourceUrl,
+    })) as { ok: boolean; jobs?: ParsedJobEntry[] };
+
+    if (res?.jobs && res.jobs.length > 0) {
+      entries = res.jobs;
+    }
+  } catch {
+    // fallback
+  }
+
+  if (entries.length === 0) {
+    const { parseHiringPost } = await import('@/lib/post-parser');
+    entries = parseHiringPost(capture.description, capture.sourceUrl);
+  }
 
   if (entries.length === 0) {
     // No structured data found — try basic save with email

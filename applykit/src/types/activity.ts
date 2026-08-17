@@ -1,4 +1,4 @@
-export type ActivityAction = 'easy_apply_fill' | 'form_fill' | 'email_sent' | 'queued';
+export type ActivityAction = 'easy_apply_fill' | 'form_fill' | 'email_sent' | 'job_applied' | 'queued';
 
 export type ActivityEntry = {
   id: string;
