@@ -65,6 +65,7 @@ export function ContextTab({
         type: job.email ? 'linkedin_mail' : 'job_scan',
         email: job.email || undefined,
         applyUrl: job.applyUrl || undefined,
+        applyUrls: job.applyUrls.length > 0 ? job.applyUrls : undefined,
         company: job.company,
         role: job.role,
         description: job.description,
@@ -89,6 +90,7 @@ export function ContextTab({
       type: job.email ? 'linkedin_mail' : 'job_scan',
       email: job.email || undefined,
       applyUrl: job.applyUrl || undefined,
+      applyUrls: job.applyUrls.length > 0 ? job.applyUrls : undefined,
       company: job.company,
       role: job.role,
       description: job.description,
@@ -187,27 +189,48 @@ export function ContextTab({
                   {parsedJobs.map((job, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between gap-2 rounded-md border border-purple-200 bg-white px-3 py-2"
+                      className="space-y-1.5 rounded-md border border-purple-200 bg-white p-3"
                     >
-                      <div className="min-w-0">
-                        <p className="truncate text-xs font-semibold text-slate-900">
-                          {job.company} — {job.role}
-                        </p>
-                        <p className="truncate text-xs text-slate-500">
-                          {job.email
-                            ? `📧 ${job.email}`
-                            : job.applyUrl
-                              ? `🔗 ${job.applyUrl.slice(0, 50)}…`
-                              : 'No contact'}
-                        </p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-slate-900 text-xs">
+                            {job.company} — {job.role}
+                          </p>
+                          {job.email ? (
+                            <p className="text-xs text-slate-600">📧 {job.email}</p>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => void handleQueueSingle(job)}
+                          className="shrink-0 rounded bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700"
+                        >
+                          + Queue
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => void handleQueueSingle(job)}
-                        className="shrink-0 rounded bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700"
-                      >
-                        + Queue
-                      </button>
+
+                      {/* Display corresponding apply links */}
+                      {job.applyUrls.length > 0 ? (
+                        <div className="space-y-1 pt-1">
+                          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                            Apply Link(s) ({job.applyUrls.length})
+                          </p>
+                          {job.applyUrls.map((url, urlIdx) => (
+                            <a
+                              key={urlIdx}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1 truncate text-xs text-indigo-600 hover:underline"
+                            >
+                              <span>🔗</span>
+                              <span className="truncate">{url}</span>
+                            </a>
+                          ))}
+                        </div>
+                      ) : !job.email ? (
+                        <p className="text-xs text-slate-400">No direct link or contact</p>
+                      ) : null}
                     </div>
                   ))}
 

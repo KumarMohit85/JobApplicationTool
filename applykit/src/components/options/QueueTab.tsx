@@ -141,11 +141,19 @@ export function QueueTab() {
                   <td className="px-3 py-2">{item.type === 'linkedin_mail' ? '📧 Mail' : '🔗 Apply'}</td>
                   <td className="px-3 py-2 font-medium">{item.company || '—'}</td>
                   <td className="px-3 py-2">{item.role || '—'}</td>
-                  <td className="max-w-[200px] truncate px-3 py-2">
+                  <td className="max-w-[220px] truncate px-3 py-2">
                     {item.email ? (
                       <a href={`mailto:${item.email}`} className="text-indigo-600 hover:underline">{item.email}</a>
+                    ) : item.applyUrls && item.applyUrls.length > 0 ? (
+                      <div className="space-y-0.5">
+                        {item.applyUrls.map((url, uIdx) => (
+                          <a key={uIdx} href={url} target="_blank" rel="noreferrer" className="block truncate text-indigo-600 hover:underline">
+                            🔗 {url.slice(0, 35)}…
+                          </a>
+                        ))}
+                      </div>
                     ) : item.applyUrl ? (
-                      <a href={item.applyUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{item.applyUrl.slice(0, 40)}…</a>
+                      <a href={item.applyUrl} target="_blank" rel="noreferrer" className="text-indigo-600 hover:underline">{item.applyUrl.slice(0, 35)}…</a>
                     ) : '—'}
                   </td>
                   <td className="px-3 py-2">
@@ -167,7 +175,20 @@ export function QueueTab() {
                           {sendingId === item.id ? 'Opening…' : '📧 Send email'}
                         </button>
                       ) : null}
-                      {item.applyUrl && item.status === 'pending' ? (
+                      {item.applyUrls && item.applyUrls.length > 0 && item.status === 'pending' ? (
+                        item.applyUrls.map((url, uIdx) => (
+                          <a
+                            key={uIdx}
+                            href={url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700"
+                            onClick={() => void markSent(item.id)}
+                          >
+                            🔗 Apply {item.applyUrls!.length > 1 ? `#${uIdx + 1}` : ''}
+                          </a>
+                        ))
+                      ) : item.applyUrl && item.status === 'pending' ? (
                         <a
                           href={item.applyUrl}
                           target="_blank"

@@ -62,21 +62,19 @@ export async function findExistingApplyKitGist(token: string): Promise<string | 
       files?: Record<string, { raw_url?: string; size?: number }>;
     }>;
 
-    // Filter gists that contain applykit-profile.json
     const matchingGists = gists.filter(
       (g) => g.files && GIST_PROFILE_FILE in g.files,
     );
 
     if (matchingGists.length === 0) return null;
 
-    // Sort by updated_at descending (newest / most active Gist first)
+    // Sort by updated_at descending
     matchingGists.sort((a, b) => {
       const timeA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
       const timeB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
       return timeB - timeA;
     });
 
-    // Return the Gist ID of the best match
     return matchingGists[0].id;
   } catch (err) {
     console.warn('Failed to discover existing Gist:', err);
@@ -88,14 +86,16 @@ export async function findExistingApplyKitGist(token: string): Promise<string | 
 
 /**
  * Push profile JSON + Resume PDFs (Base64) to a GitHub Gist.
- * If no gistId is supplied, automatically searches for an existing ApplyKit Gist first.
- * Returns the gistId.
+ * Guard: Refuses to overwrite an existing Gist if the local profile is empty.
  */
 export async function pushProfileToGist(
   profile: Profile,
   token: string,
   gistId?: string,
 ): Promise<string> {
+  const isEmptyProfile =
+    !profile.personal.fullName.trim() && !profile.personal.email.trim();
+
   let targetGistId = gistId?.trim();
 
   // If no Gist ID stored, check if the user already has an ApplyKit Gist on GitHub
@@ -104,6 +104,13 @@ export async function pushProfileToGist(
     if (existing) {
       targetGistId = existing;
     }
+  }
+
+  // SAFETY GUARD: Refuse to overwrite an existing cloud backup with an empty local profile!
+  if (isEmptyProfile && targetGistId) {
+    throw new Error(
+      'Cannot push an empty profile over an existing cloud backup. Please fill in your profile details or click "Pull from cloud" to restore.',
+    );
   }
 
   const profileContent = JSON.stringify(profile, null, 2);
@@ -170,7 +177,8 @@ export async function pushProfileToGist(
 
 /**
  * Pull profile JSON and restore Resume PDFs from a GitHub Gist by ID.
- * If no gistId is supplied, automatically searches for an existing ApplyKit Gist first.
+ * Auto-recovery: If the latest revision was accidentally wiped with empty data,
+ * automatically scans Gist commit history to recover the most recent populated revision!
  */
 export async function pullProfileFromGist(
   token: string,
@@ -207,25 +215,79 @@ export async function pullProfileFromGist(
 
   const data = (await response.json()) as {
     files?: Record<string, { content?: string }>;
+    history?: Array<{ version: string; committed_at?: string }>;
   };
 
-  const profileFile = data.files?.[GIST_PROFILE_FILE];
-  if (!profileFile?.content) {
+  let profileContent = data.files?.[GIST_PROFILE_FILE]?.content;
+  let resumesContent = data.files?.[GIST_RESUMES_FILE]?.content;
+
+  // Check if current revision profile is empty (e.g. wiped by an empty push)
+  let isCurrentEmpty = false;
+  if (profileContent) {
+    try {
+      const p = JSON.parse(profileContent) as Profile;
+      if (!p.personal?.fullName?.trim() && !p.personal?.email?.trim()) {
+        isCurrentEmpty = true;
+      }
+    } catch {
+      isCurrentEmpty = true;
+    }
+  } else {
+    isCurrentEmpty = true;
+  }
+
+  // AUTO-RECOVERY: If the current revision has empty data, search earlier Gist revisions!
+  if (isCurrentEmpty && data.history && data.history.length > 1) {
+    console.info('[ApplyKit] Latest Gist revision is empty. Scanning revision history for populated backup...');
+    for (const entry of data.history.slice(1)) {
+      try {
+        const revResponse = await fetch(`${GIST_API}/${targetGistId}/${entry.version}`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            Accept: 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28',
+          },
+        });
+        if (!revResponse.ok) continue;
+
+        const revData = (await revResponse.json()) as {
+          files?: Record<string, { content?: string }>;
+        };
+        const revProfileStr = revData.files?.[GIST_PROFILE_FILE]?.content;
+        if (revProfileStr) {
+          const p = JSON.parse(revProfileStr) as Profile;
+          if (p.personal?.fullName?.trim() || p.personal?.email?.trim()) {
+            profileContent = revProfileStr;
+            if (revData.files?.[GIST_RESUMES_FILE]?.content) {
+              resumesContent = revData.files[GIST_RESUMES_FILE].content;
+            }
+            console.info(
+              `[ApplyKit] Successfully recovered populated profile from Gist revision ${entry.version.slice(0, 7)}`,
+            );
+            break;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch historical Gist revision:', err);
+      }
+    }
+  }
+
+  if (!profileContent) {
     throw new Error(`Gist does not contain "${GIST_PROFILE_FILE}". Push your profile first.`);
   }
 
   let parsedProfile: unknown;
   try {
-    parsedProfile = JSON.parse(profileFile.content);
+    parsedProfile = JSON.parse(profileContent);
   } catch {
     throw new Error('Gist profile content is not valid JSON.');
   }
 
   // Restore Resumes if present
-  const resumesFile = data.files?.[GIST_RESUMES_FILE];
-  if (resumesFile?.content) {
+  if (resumesContent) {
     try {
-      const parsedResumes = JSON.parse(resumesFile.content) as GistResumePackage[];
+      const parsedResumes = JSON.parse(resumesContent) as GistResumePackage[];
       if (Array.isArray(parsedResumes)) {
         const cleanResumes: ResumeVariant[] = [];
         for (const pkg of parsedResumes) {

@@ -18,6 +18,11 @@ function normalizeQueueItem(input: Partial<QueueItem>): QueueItem | null {
       : 'pending',
     email: typeof input.email === 'string' ? input.email.trim() : undefined,
     applyUrl: typeof input.applyUrl === 'string' ? input.applyUrl.trim() : undefined,
+    applyUrls: Array.isArray(input.applyUrls)
+      ? input.applyUrls.map((u) => String(u).trim()).filter(Boolean)
+      : typeof input.applyUrl === 'string' && input.applyUrl.trim()
+        ? [input.applyUrl.trim()]
+        : undefined,
     company,
     role,
     description: typeof input.description === 'string' ? input.description : '',
@@ -68,6 +73,7 @@ export async function addQueueItem(input: {
   type: QueueItemType;
   email?: string;
   applyUrl?: string;
+  applyUrls?: string[];
   company: string;
   role: string;
   description: string;
