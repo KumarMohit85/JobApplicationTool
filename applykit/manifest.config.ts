@@ -13,6 +13,8 @@ const manifest: ManifestV3Export = {
     'https://job-boards.greenhouse.io/*',
     'https://jobs.lever.co/*',
     'https://mail.google.com/*',
+    'https://generativelanguage.googleapis.com/*',
+    'https://api.github.com/*',
   ],
   action: {
     default_title: 'ApplyKit',

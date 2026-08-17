@@ -9,6 +9,8 @@ import { EasyApplyTab } from '@/components/options/EasyApplyTab';
 import { ActivityLogTab } from '@/components/options/ActivityLogTab';
 import { BackupTab } from '@/components/options/BackupTab';
 import { QueueTab } from '@/components/options/QueueTab';
+import { AiSettingsTab } from '@/components/options/AiSettingsTab';
+import { CloudSyncTab } from '@/components/options/CloudSyncTab';
 import { Button, SectionCard, StatusBanner } from '@/components/ui';
 
 type TabId =
@@ -20,7 +22,9 @@ type TabId =
   | 'easyApply'
   | 'queue'
   | 'activity'
-  | 'backup';
+  | 'backup'
+  | 'ai'
+  | 'cloud';
 
 const tabs: { id: TabId; label: string }[] = [
   { id: 'personal', label: 'Personal' },
@@ -32,6 +36,8 @@ const tabs: { id: TabId; label: string }[] = [
   { id: 'queue', label: 'Mail queue' },
   { id: 'activity', label: 'Activity log' },
   { id: 'backup', label: 'Backup' },
+  { id: 'ai', label: '✨ AI settings' },
+  { id: 'cloud', label: '☁️ Cloud sync' },
 ];
 
 export default function OptionsApp() {
@@ -127,6 +133,17 @@ export default function OptionsApp() {
                   onImport={(imported) => {
                     setProfile(imported);
                     markDirty();
+                  }}
+                />
+              ) : null}
+              {activeTab === 'ai' ? <AiSettingsTab /> : null}
+              {activeTab === 'cloud' ? (
+                <CloudSyncTab
+                  profile={profile}
+                  onProfilePulled={(pulled) => {
+                    setProfile(pulled);
+                    markDirty();
+                    setSaveMessage('Profile pulled from cloud — click Save to persist.');
                   }}
                 />
               ) : null}

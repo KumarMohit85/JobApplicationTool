@@ -764,27 +764,89 @@ npm run build    # production build
 
 | Feature | Status |
 |---------|--------|
-| **Scaffold** (Vite + CRXJS + React + Tailwind) | Done |
-| **F1** Profile storage + Options UI | Done |
-| **F2** Skills library | Done |
-| **F3** Resume library (PDF + descriptions) | Done |
-| **F4** Page / job context extraction | Done |
-| **F5** Skill matching (side panel) | Done |
-| **F6** Resume matching (side panel) | Done |
-| **F7** Template generation (side panel) | Done |
-| **F15** Copy / insert on page | Done |
-| **F10** LinkedIn Easy Apply autofill | Done |
-| **F11** Generic + Greenhouse + Lever autofill | Done |
-| **F8** Side panel tabbed UI | Done |
-| **F9** Popup quick actions | Done |
-| **F12** LinkedIn post capture overlay | Done |
-| **F13** CSV export / import | Done |
-| **F14** Mail send assist (Gmail + PDF) | Done |
-| **F16** Basic activity log | Done |
-| **F17** Profile / queue backup | Done |
+| **Scaffold** (Vite + CRXJS + React + Tailwind) | ✅ Done |
+| **F1** Profile storage + Options UI | ✅ Done |
+| **F2** Skills library | ✅ Done |
+| **F3** Resume library (PDF + descriptions) | ✅ Done |
+| **F4** Page / job context extraction | ✅ Done |
+| **F5** Skill matching (side panel) | ✅ Done |
+| **F6** Resume matching (side panel) | ✅ Done |
+| **F7** Template generation (side panel) | ✅ Done |
+| **F15** Copy / insert on page | ✅ Done |
+| **F10** LinkedIn Easy Apply autofill | ✅ Done |
+| **F11** Generic + Greenhouse + Lever autofill | ✅ Done |
+| **F8** Side panel tabbed UI | ✅ Done |
+| **F9** Popup quick actions | ✅ Done |
+| **F12** LinkedIn post capture overlay | ✅ Done |
+| **F13** CSV export / import | ✅ Done |
+| **F14** Mail send assist (Gmail + PDF) | ✅ Done |
+| **F16** Basic activity log | ✅ Done |
+| **F17** Profile / queue backup | ✅ Done |
+| **P3-1** AI content generation (Gemini — cover letter, cold email) | ✅ Done |
+| **P3-1** AI job review (apply / maybe / skip + reasons + risks) | ✅ Done |
+| **P3-9** Cloud profile sync (GitHub Gist push/pull + read-only URL) | ✅ Done |
 
 ---
 
-## Next step
+## AI Integration
 
-MVP (F1–F17) is complete. Phase 2: Speed Mode, referral connect, full application tracker.
+ApplyKit uses Google Gemini API (user-supplied key — never hardcoded).
+
+### Setup
+1. Get a free key at [Google AI Studio](https://aistudio.google.com/apikey)
+2. Options → **✨ AI settings** → paste key → Save → Test connection
+3. In the side panel, click **✨ Generate with AI** on Cover or Email tabs
+4. In the side panel Match tab, click **Get AI suggestion** for an apply/skip decision
+
+### What AI does
+| Feature | Behaviour |
+|---------|----------|
+| Cover letter | Personalized 3-paragraph letter from your profile + JD |
+| Cold email | Subject + tailored body ≤ 220 words |
+| Job review | `apply` / `maybe` / `skip` decision + confidence % + bullet reasons |
+| Resume pick | AI recommends which resume variant fits the JD best |
+
+### What stays rule-based (always)
+- Autofill (name, email, phone, dropdowns) — DOM-based, instant, free
+- Skill matching score — keyword overlap
+- Template fallback — always available when offline or no key
+
+### Privacy
+- API key stored in `chrome.storage.local` — never committed to git
+- All Gemini calls routed through the **background service worker** (key not exposed to page scripts)
+- Data sent: profile summary + skills + JD text (no resume PDF bytes)
+- Gemini free tier: ~15 RPM on `gemini-2.0-flash` — plenty for job search volume
+
+---
+
+## Cloud Profile Sync
+
+Sync your profile JSON across devices via GitHub Gist or a read-only URL.
+
+### Setup (GitHub Gist)
+1. Create a token at [GitHub → Settings → Developer settings → Tokens](https://github.com/settings/tokens/new?scopes=gist&description=ApplyKit) with `gist` scope
+2. Options → **☁️ Cloud sync** → provider: GitHub Gist → paste token → Save
+3. Click **⬆ Push to Gist** — Gist ID is auto-filled
+4. On another device: enter the same token + Gist ID → **⬇ Pull from cloud**
+5. Optionally enable **Cloud is source of truth** to auto-pull on extension start
+
+### Setup (Read-only URL)
+1. Host your `applykit-profile.json` at any public URL (e.g. a public Gist raw URL)
+2. Options → **☁️ Cloud sync** → provider: Read-only URL → paste URL → Pull
+
+### Privacy
+- Token stored in `chrome.storage.local` only — never in the repo
+- Gist is **private** by default
+- Do not use shared GitHub accounts
+
+---
+
+## Next steps
+
+Phase 2 backlog (Speed Mode, referral connect, full tracker) + Phase 3 enhancements:
+- **Screenshot fallback** for unknown ATS (Gemini Vision via `chrome.tabs.captureVisibleTab`)
+- **Custom question answering**: content script collects unmapped form questions → AI answers
+- **Batch pre-generation** (Groq or Gemini batch before a job-search session)
+- **Gmail API draft with attachment** (OAuth — true one-click send)
+- **Speed Mode dashboard** (keyboard nav, 200-item queue, auto-advance)
+

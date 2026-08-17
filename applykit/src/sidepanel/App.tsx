@@ -42,6 +42,8 @@ export default function SidePanelApp() {
   const [coverDraft, setCoverDraft] = useState('');
   const coverLetterForAutofill = coverDraft || generated?.coverLetter;
 
+  const matchedSkillNames = skillMatch?.matched.map((m) => m.skill.name) ?? [];
+
   const openOptions = () => {
     void chrome.runtime.openOptionsPage();
   };
@@ -106,6 +108,9 @@ export default function SidePanelApp() {
             resumes={resumes}
             selectedResumeId={selectedResumeId}
             onSelectResume={setSelectedResumeId}
+            context={context}
+            profile={profile}
+            matchedSkillNames={matchedSkillNames}
           />
         ) : null}
 
@@ -115,11 +120,24 @@ export default function SidePanelApp() {
             hasContext={Boolean(context)}
             draft={coverDraft}
             onDraftChange={setCoverDraft}
+            context={context}
+            profile={profile}
+            selectedResumeId={selectedResumeId}
+            resumes={resumes}
+            matchedSkillNames={matchedSkillNames}
           />
         ) : null}
 
         {activeTab === 'email' ? (
-          <EmailTab generated={generated} hasContext={Boolean(context)} />
+          <EmailTab
+            generated={generated}
+            hasContext={Boolean(context)}
+            context={context}
+            profile={profile}
+            selectedResumeId={selectedResumeId}
+            resumes={resumes}
+            matchedSkillNames={matchedSkillNames}
+          />
         ) : null}
 
         <Button variant="secondary" onClick={openOptions}>

@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Profile } from '@/types/profile';
 import { createDefaultProfile, getProfile, saveProfile } from '@/lib/profile';
+import {
+  CLOUD_SYNC_STORAGE_KEY,
+  createDefaultCloudSyncSettings,
+  type CloudSyncSettings,
+} from '@/types/cloud-sync';
 
 type UseProfileState = {
   profile: Profile;
@@ -14,6 +19,33 @@ type UseProfileState = {
   markDirty: () => void;
 };
 
+async function loadCloudSettings(): Promise<CloudSyncSettings> {
+  const result = await chrome.storage.local.get(CLOUD_SYNC_STORAGE_KEY);
+  const stored = result[CLOUD_SYNC_STORAGE_KEY] as Partial<CloudSyncSettings> | undefined;
+  return { ...createDefaultCloudSyncSettings(), ...(stored ?? {}) };
+}
+
+/** If cloud-primary is enabled, pull from cloud via background worker. */
+async function tryCloudPull(): Promise<Profile | null> {
+  try {
+    const settings = await loadCloudSettings();
+    if (!settings.enabled || !settings.cloudPrimary) return null;
+
+    const response = (await chrome.runtime.sendMessage({ type: 'CLOUD_PULL' })) as {
+      ok: boolean;
+      profile?: Profile;
+      error?: string;
+    };
+
+    if (response.ok && response.profile) {
+      return response.profile;
+    }
+  } catch {
+    // silently fall back to local
+  }
+  return null;
+}
+
 export function useProfile(): UseProfileState {
   const [profile, setProfile] = useState<Profile>(createDefaultProfile());
   const [loading, setLoading] = useState(true);
@@ -25,8 +57,16 @@ export function useProfile(): UseProfileState {
     setLoading(true);
     setError(null);
     try {
-      const data = await getProfile();
-      setProfile(data);
+      // Load local first (fast)
+      const local = await getProfile();
+      setProfile(local);
+
+      // Then attempt cloud pull if cloud-primary is on (async override)
+      const cloud = await tryCloudPull();
+      if (cloud) {
+        setProfile(cloud);
+      }
+
       setDirty(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load profile.');

@@ -128,6 +128,41 @@ Then in **`chrome://extensions`**, click **Reload** on ApplyKit.
 
 ---
 
+## 7. AI settings (Gemini)
+
+ApplyKit can generate personalized cover letters, cold emails, and apply/skip job advice using Google Gemini.
+
+1. Get a **free** API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) (sign in with Google)
+2. In Chrome, click the ApplyKit icon → **Profile settings**
+3. Open the **✨ AI settings** tab
+4. Paste your key → choose model (default: `gemini-2.0-flash`) → **Save AI settings**
+5. Click **Test connection** — you should see "Connection successful"
+6. Back in the side panel, open a job page → Click **✨ Generate with AI** on the Cover or Email tab
+
+**Privacy:** Your key is stored only in `chrome.storage.local`. All API calls go through the background service worker — the key is never exposed to page scripts or committed to git.
+
+---
+
+## 8. Cloud profile sync
+
+Sync your profile across devices via a private GitHub Gist.
+
+### Using GitHub Gist (recommended)
+
+1. Create a Personal Access Token at [github.com/settings/tokens](https://github.com/settings/tokens/new?scopes=gist&description=ApplyKit) — enable **`gist`** scope only
+2. Options → **☁️ Cloud sync** tab → provider: **GitHub Gist**
+3. Paste your token → **Save settings**
+4. Click **⬆ Push to Gist** — the Gist ID is auto-filled after first push (save note of it)
+5. On another device: enter the same token + Gist ID → **⬇ Pull from cloud**
+6. Optional: enable **Cloud is source of truth** to auto-pull when the extension starts
+
+### Using a read-only URL
+
+1. Host `applykit-profile.json` at any accessible URL (e.g. public Gist raw URL)
+2. Options → **☁️ Cloud sync** → provider: **Read-only URL** → paste URL → **Pull from cloud**
+
+---
+
 ## Troubleshooting
 
 ### `npm run build` fails
@@ -155,7 +190,20 @@ Then in **`chrome://extensions`**, click **Reload** on ApplyKit.
 
 - Test your GitHub SSH setup: `ssh -T git@github.com`
 - Ensure your SSH public key is added in **GitHub → Settings → SSH and GPG keys**
-- See [GitHub’s SSH documentation](https://docs.github.com/en/authentication/connecting-to-github-with-ssh)
+- See [GitHub's SSH documentation](https://docs.github.com/en/authentication/connecting-to-github-with-ssh)
+
+### AI test connection fails
+
+- Check that your key starts with `AIza` and is copied fully
+- Ensure AI is **enabled** (checkbox in ✨ AI settings)
+- Free tier limit: ~15 requests/min — wait a moment if rate-limited
+- Reload the extension (`chrome://extensions` → Reload) and try again
+
+### Cloud push/pull fails
+
+- **401**: GitHub token is invalid or expired — create a new one
+- **404 Gist not found**: clear the Gist ID field and push again to create a new one
+- Make sure your token has **`gist`** scope and the extension was reloaded after saving
 
 ---
 
@@ -167,6 +215,13 @@ JobApplicationTool/
 ├── README.md
 └── applykit/             ← Chrome extension source
     ├── src/
+    │   ├── background/   ← service worker (AI + cloud message router)
+    │   ├── lib/
+    │   │   ├── ai/       ← Gemini client, prompts, response parser
+    │   │   └── cloud-sync.ts  ← GitHub Gist + URL sync
+    │   ├── hooks/        ← useProfile, useAiSettings, useCloudSync, useAiGenerate
+    │   └── components/
+    │       └── options/  ← AiSettingsTab, CloudSyncTab + profile tabs
     ├── dist/             ← load this in Chrome (after build)
     ├── package.json
     └── README.md         ← feature plan & architecture
@@ -180,4 +235,4 @@ JobApplicationTool/
 |---------|---------|
 | `npm run dev` | Watch mode — rebuild on save |
 | `npm run build` | Production build → `dist/` |
-| `npm run compile` | TypeScript check only |
+| `npm run compile` | TypeScript check only (no emit) |
