@@ -10,7 +10,7 @@ export function buildAiPrompt(request: AiGenerateRequest): string {
 
   const resumeLines = resumes.map(
     (r) =>
-      `- id: ${r.id} | name: ${r.name} | roles: ${r.targetRoles.join(', ') || 'n/a'} | skills: ${r.skills.slice(0, 12).join(', ')} | description: ${r.description.slice(0, 400)}`,
+      `- id: ${r.id} | name: ${r.name} | driveUrl: ${r.driveUrl || 'none'} | roles: ${r.targetRoles.join(', ') || 'n/a'} | skills: ${r.skills.slice(0, 12).join(', ')} | description: ${r.description.slice(0, 400)}`,
   );
 
   const customInstructions = customEmailPrompt?.trim()
@@ -69,7 +69,7 @@ TASK: Generate tailored application copy. Return JSON only (no markdown):
   "coverLetter": "full cover letter with greeting and sign-off",
   "coldEmail": {
     "subject": "email subject line",
-    "body": "email body, mention resume attachment, professional tone"
+    "body": "email body, include drive link if available, professional tone"
   }
 }
 
@@ -77,5 +77,5 @@ Rules:
 - Use the candidate's real name in sign-off
 - Strictly adhere to the USER CUSTOM SYSTEM PROMPT & INSTRUCTIONS provided above
 - Do not claim skills not in profile or matched skills
-- Prefer the selected resume name when mentioning attachment`;
+- If the selected resume (or matching resume) has a driveUrl, automatically include a clear line in the cold email body with the drive link to view the resume online (e.g. "You can view my resume online at: [driveUrl]"). Do not prompt the user to download a local file.`;
 }

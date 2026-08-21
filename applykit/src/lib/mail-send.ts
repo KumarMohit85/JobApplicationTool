@@ -1,7 +1,7 @@
 import { generateContent } from '@/lib/generator';
 import { matchResume, matchSkills } from '@/lib/matcher';
 import { getProfile } from '@/lib/profile';
-import { downloadResumePdf, listResumes } from '@/lib/resumes';
+import { listResumes } from '@/lib/resumes';
 import { createJobContext } from '@/lib/job-context';
 import type { QueueItem } from '@/types/queue';
 import { PENDING_COMPOSE_STORAGE_KEY, type PendingCompose } from '@/types/mail';
@@ -56,30 +56,25 @@ export async function prepareMailSend(
     driveUrl: resumeMatch?.driveUrl,
   });
 
+  let body = overrideBody || generated.coldEmail.body;
+  if (resumeMatch?.driveUrl?.trim() && !body.includes(resumeMatch.driveUrl.trim())) {
+    body += `\n\nYou can view my resume online at: ${resumeMatch.driveUrl.trim()}`;
+  }
+
   const compose: PendingCompose = {
     to: item.email.trim(),
     subject: overrideSubject || generated.coldEmail.subject,
-    body: overrideBody || generated.coldEmail.body,
+    body,
     resumeFileName: resumeMatch?.fileName,
   };
 
   await chrome.storage.session.set({ [PENDING_COMPOSE_STORAGE_KEY]: compose });
-
-  let resumeHint = '';
-  if (resumeMatch) {
-    try {
-      await downloadResumePdf(resumeMatch);
-      resumeHint = ` Attach ${resumeMatch.fileName || resumeMatch.name.replace(/\s+/g, '_') + '.pdf'} (downloaded), then Send.`;
-    } catch {
-      resumeHint = ' Upload your resume manually, then Send.';
-    }
-  }
 
   const gmailUrl = buildGmailComposeUrl(compose);
   await chrome.tabs.create({ url: gmailUrl });
 
   return {
     success: true,
-    message: `Gmail compose opened.${resumeHint}`,
+    message: 'Gmail compose opened.',
   };
 }

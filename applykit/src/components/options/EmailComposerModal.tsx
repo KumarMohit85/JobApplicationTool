@@ -46,10 +46,10 @@ export function EmailComposerModal({
         setSelectedResumeId(active.id);
       }
 
-      const gdriveLine = active?.driveUrl
-        ? `\n\nYou can also view my resume on Google Drive here: ${active.driveUrl}`
-        : '';
-      const initialBody = `Dear Hiring Team at ${item.company},\n\nI am writing to express my strong interest in the ${item.role} position.\n\n${profile.summary ? profile.summary + '\n\n' : ''}I have attached my resume for your review.${gdriveLine}\n\nI would welcome the opportunity to discuss how my background aligns with your requirements.\n\nBest regards,\n${profile.personal.fullName || 'Applicant'}\n${profile.personal.linkedIn ? 'LinkedIn: ' + profile.personal.linkedIn + '\n' : ''}${profile.personal.phone ? 'Phone: ' + profile.personal.phone : ''}`;
+      const resumeLine = active?.driveUrl
+        ? `You can view my resume online at: ${active.driveUrl}`
+        : 'Please find my resume attached for your review.';
+      const initialBody = `Dear Hiring Team at ${item.company},\n\nI am writing to express my strong interest in the ${item.role} position.\n\n${profile.summary ? profile.summary + '\n\n' : ''}${resumeLine}\n\nI would welcome the opportunity to discuss how my background aligns with your requirements.\n\nBest regards,\n${profile.personal.fullName || 'Applicant'}\n${profile.personal.linkedIn ? 'LinkedIn: ' + profile.personal.linkedIn + '\n' : ''}${profile.personal.phone ? 'Phone: ' + profile.personal.phone : ''}`;
       setBody(initialBody);
     });
   }, [item, profile]);
@@ -78,6 +78,7 @@ export function EmailComposerModal({
             description: r.description || '',
             skills: r.skills || [],
             targetRoles: r.targetRoles || [],
+            driveUrl: r.driveUrl,
           })),
           selectedResumeId,
           mode: 'content',
@@ -106,7 +107,7 @@ export function EmailComposerModal({
     setSelectedResumeId(id);
     const chosen = resumes.find((r) => r.id === id);
     if (chosen?.driveUrl && !body.includes(chosen.driveUrl)) {
-      setBody((prev) => `${prev}\n\nYou can also view my resume on Google Drive here: ${chosen.driveUrl}`);
+      setBody((prev) => `${prev}\n\nYou can view my resume online at: ${chosen.driveUrl}`);
     }
   };
 

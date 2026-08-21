@@ -103,13 +103,11 @@ function buildColdEmail(input: GenerateInput, fitParagraph: string): GeneratedCo
 
   const subject = `Application for ${role}${company ? ` — ${company}` : ''} — ${yourName}`;
 
-  let resumeLine = resumeName
-    ? `Please find my resume (${resumeName}) attached for your review.`
-    : 'Please find my resume attached for your review.';
-
-  if (driveUrl?.trim()) {
-    resumeLine += ` You can also view my resume online at: ${driveUrl.trim()}`;
-  }
+  let resumeLine = driveUrl?.trim()
+    ? `You can view my resume online at: ${driveUrl.trim()}`
+    : resumeName
+      ? `Please find my resume (${resumeName}) attached for your review.`
+      : 'Please find my resume attached for your review.';
 
   const bodyTemplate = `Dear Hiring Team,
 

@@ -28,6 +28,7 @@ function toAiResumeSummary(r: ResumeVariant): AiResumeSummary {
     description: r.description,
     skills: r.skills,
     targetRoles: r.targetRoles,
+    driveUrl: r.driveUrl,
   };
 }
 

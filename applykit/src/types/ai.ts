@@ -24,6 +24,7 @@ export type AiResumeSummary = {
   description: string;
   skills: string[];
   targetRoles: string[];
+  driveUrl?: string;
 };
 
 export type AiGenerateRequest = {
