@@ -1,9 +1,13 @@
 /** Extract hiring info from a LinkedIn feed post element. */
 
+import { extractContactNumbers } from '@/lib/post-parser';
+
 const EMAIL_RE = /[\w.-]+@[\w.-]+\.\w+/g;
 
 export type LinkedInPostCapture = {
   emails: string[];
+  phoneNumbers: string[];
+  whatsappNumbers: string[];
   company: string;
   role: string;
   recruiterName: string;
@@ -130,6 +134,7 @@ export function captureLinkedInPostFromElement(root: Element): LinkedInPostCaptu
   if (description.length < 30) return null;
 
   const emails = extractEmails(description);
+  const contacts = extractContactNumbers(description);
   const recruiterName = extractRecruiterName(root);
   const authorHeadline = extractAuthorHeadline(root);
   const role = extractRole(description);
@@ -147,6 +152,8 @@ export function captureLinkedInPostFromElement(root: Element): LinkedInPostCaptu
 
   return {
     emails,
+    phoneNumbers: contacts.phoneNumbers,
+    whatsappNumbers: contacts.whatsappNumbers,
     company: company || 'Hiring Company',
     role: role || 'Open Position',
     recruiterName,

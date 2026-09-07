@@ -49,7 +49,7 @@ export default function PopupApp() {
   const fillForm = async () => {
     setBusy('fill');
     setMessage(null);
-    const { result, error } = await runAutofillOnActiveTab({ mode: 'form' });
+    const { result, error } = await runAutofillOnActiveTab({ mode: 'form', useAi: true });
     setBusy(null);
     showMessage(formatAutofillMessage(result, error), error ? 'error' : 'success');
     if (!error && result.filledCount > 0) {
@@ -93,6 +93,8 @@ export default function PopupApp() {
       company: postCompany.trim(),
       role: postRole.trim(),
       description: postDraft.description,
+      phoneNumbers: postDraft.phoneNumbers,
+      whatsappNumbers: postDraft.whatsappNumbers,
       sourceUrl: postDraft.sourceUrl,
     });
     setBusy(null);

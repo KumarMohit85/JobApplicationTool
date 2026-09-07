@@ -1,5 +1,6 @@
 import type { AutofillValueMap } from '@/lib/autofill-values';
 import type { AutofillRequest, AutofillResult } from '@/lib/autofill-types';
+import type { AnswerEntry } from '@/types/answers';
 import { autofillRoot } from '../engine';
 
 const FORM_ROOT_SELECTORS = [
@@ -14,6 +15,7 @@ export function autofillGreenhouseForm(
   values: AutofillValueMap,
   request: AutofillRequest,
   customAnswers: Record<string, string>,
+  answerBank: AnswerEntry[] = [],
 ): AutofillResult {
   let root: ParentNode = document.body;
   for (const selector of FORM_ROOT_SELECTORS) {
@@ -23,5 +25,5 @@ export function autofillGreenhouseForm(
       break;
     }
   }
-  return autofillRoot(root, values, request, customAnswers);
+  return autofillRoot(root, values, request, customAnswers, answerBank);
 }

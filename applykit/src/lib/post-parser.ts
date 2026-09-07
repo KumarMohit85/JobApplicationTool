@@ -6,6 +6,7 @@
 
 const EMAIL_RE = /[\w.-]+@[\w.-]+\.\w{2,}/g;
 const URL_RE = /https?:\/\/[^\s"'<>)\]]+/g;
+const PHONE_RE = /(?:\+?\d[\d\s().-]{7,}\d)/g;
 
 const KNOWN_COMPANIES = [
   'Texas Instruments', 'Google', 'Amazon', 'Microsoft', 'Meta', 'Apple', 'Netflix', 'Stripe',
@@ -48,6 +49,8 @@ export type ParsedJobEntry = {
   company: string;
   role: string;
   email: string;
+  phoneNumbers: string[];
+  whatsappNumbers: string[];
   applyUrl: string;
   applyUrls: string[];
   description: string;
@@ -157,6 +160,38 @@ function cleanUrl(url: string): string {
 function extractAllEmails(text: string): string[] {
   const matches = text.match(EMAIL_RE) ?? [];
   return [...new Set(matches.map((e) => e.toLowerCase()))];
+}
+
+function normalizeContactNumber(raw: string): string {
+  const hasPlus = raw.trim().startsWith('+');
+  let digits = raw.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+  if (digits.length < 10 || digits.length > 15) return '';
+  if (digits.length === 10 && !/^[6-9]/.test(digits)) return '';
+  return hasPlus ? `+${digits}` : digits;
+}
+
+export function extractContactNumbers(text: string): {
+  phoneNumbers: string[];
+  whatsappNumbers: string[];
+} {
+  const phoneNumbers: string[] = [];
+  const whatsappNumbers: string[] = [];
+
+  for (const match of text.matchAll(PHONE_RE)) {
+    const normalized = normalizeContactNumber(match[0]);
+    if (!normalized) continue;
+    phoneNumbers.push(normalized);
+
+    const index = match.index ?? 0;
+    const context = text.slice(Math.max(0, index - 220), index + match[0].length + 60);
+    if (/whats\s*app/i.test(context)) whatsappNumbers.push(normalized);
+  }
+
+  return {
+    phoneNumbers: [...new Set(phoneNumbers)],
+    whatsappNumbers: [...new Set(whatsappNumbers)],
+  };
 }
 
 function extractAllUrls(text: string): string[] {
@@ -281,6 +316,7 @@ export function parseHiringPost(rawText: string, sourceUrl: string): ParsedJobEn
 
   const globalEmails = extractAllEmails(normalizedRaw);
   const globalEmail = globalEmails[0] || '';
+  const globalContacts = extractContactNumbers(normalizedRaw);
 
   const lines = normalizedRaw.split(/\n/);
 
@@ -299,7 +335,12 @@ export function parseHiringPost(rawText: string, sourceUrl: string): ParsedJobEn
     const trimmed = line.trim();
     if (!trimmed) continue;
 
-    if (/whatsapp|telegram|repost|follow.*for more|interview_kit|resume_defense/i.test(trimmed)) {
+    // Skip pure noise lines, but keep lines that contain phone numbers (WhatsApp contact lines)
+    if (/repost|follow.*for more|interview_kit|resume_defense/i.test(trimmed)) {
+      continue;
+    }
+    // Skip telegram/whatsapp promo lines that don't contain digits (no phone number to save)
+    if (/telegram|whatsapp/i.test(trimmed) && !/\d{7,}/.test(trimmed)) {
       continue;
     }
 
@@ -358,6 +399,12 @@ export function parseHiringPost(rawText: string, sourceUrl: string): ParsedJobEn
       if (existing) {
         existing.applyUrls = [...new Set([...existing.applyUrls, ...validUrls])];
         if (!existing.applyUrl && validUrls[0]) existing.applyUrl = validUrls[0];
+        existing.phoneNumbers = [
+          ...new Set([...existing.phoneNumbers, ...globalContacts.phoneNumbers]),
+        ];
+        existing.whatsappNumbers = [
+          ...new Set([...existing.whatsappNumbers, ...globalContacts.whatsappNumbers]),
+        ];
       }
       continue;
     }
@@ -367,9 +414,11 @@ export function parseHiringPost(rawText: string, sourceUrl: string): ParsedJobEn
       company,
       role,
       email,
+      phoneNumbers: globalContacts.phoneNumbers,
+      whatsappNumbers: globalContacts.whatsappNumbers,
       applyUrl: validUrls[0] || '',
       applyUrls: validUrls,
-      description: b.text.slice(0, 2000),
+      description: b.text.slice(0, 8000),
       sourceUrl,
     });
   }
@@ -384,9 +433,11 @@ export function parseHiringPost(rawText: string, sourceUrl: string): ParsedJobEn
         company,
         role,
         email: globalEmail,
+        phoneNumbers: globalContacts.phoneNumbers,
+        whatsappNumbers: globalContacts.whatsappNumbers,
         applyUrl: validUrls[0] || '',
         applyUrls: validUrls,
-        description: normalizedRaw.slice(0, 2000),
+        description: normalizedRaw.slice(0, 8000),
         sourceUrl,
       });
     }

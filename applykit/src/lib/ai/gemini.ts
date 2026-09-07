@@ -138,6 +138,7 @@ export async function testGeminiConnection(settings: AiSettings): Promise<{ ok: 
         willingToRelocate: 'Yes',
         customAnswers: {},
       },
+      answerBank: [],
       updatedAt: new Date().toISOString(),
     },
     job: {

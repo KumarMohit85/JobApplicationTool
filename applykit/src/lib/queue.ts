@@ -1,6 +1,85 @@
 import { createId } from '@/lib/id';
 import { QUEUE_STORAGE_KEY, type QueueItem, type QueueItemType, type QueueStatus } from '@/types/queue';
 
+export const QUEUE_DESCRIPTION_MAX = 8000;
+
+const GENERIC_COMPANY = new Set([
+  'hiring company',
+  'linkedin',
+  'unknown company',
+  'company name',
+  'selected job post',
+]);
+
+const GENERIC_ROLE = new Set([
+  'open position',
+  'unknown role',
+  'role title',
+  'job position',
+  'selected job post',
+]);
+
+const TRACKING_PARAMS = new Set([
+  'utm_source',
+  'utm_medium',
+  'utm_campaign',
+  'utm_content',
+  'utm_term',
+  'li_fat_id',
+  'trk',
+  'trackingid',
+]);
+
+/** Prefer the longest real JD so mail/AI generation has enough context. */
+export function resolveQueueDescription(...parts: Array<string | undefined>): string {
+  let best = '';
+  for (const part of parts) {
+    const text = (part ?? '').trim();
+    if (text.length > best.length) best = text;
+  }
+  return best.slice(0, QUEUE_DESCRIPTION_MAX);
+}
+
+function normalizeUrlForDedupe(url: string): string {
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  try {
+    const parsed = new URL(trimmed);
+    parsed.hash = '';
+    for (const key of [...parsed.searchParams.keys()]) {
+      if (TRACKING_PARAMS.has(key.toLowerCase())) parsed.searchParams.delete(key);
+    }
+    const path = parsed.pathname.replace(/\/+$/, '') || '';
+    const search = parsed.searchParams.toString();
+    return `${parsed.origin.toLowerCase()}${path.toLowerCase()}${search ? `?${search}` : ''}`;
+  } catch {
+    return trimmed.toLowerCase();
+  }
+}
+
+function collectApplyUrls(item: { applyUrl?: string; applyUrls?: string[] }): string[] {
+  const urls = [...(item.applyUrls ?? [])];
+  if (item.applyUrl) urls.push(item.applyUrl);
+  return [...new Set(urls.map(normalizeUrlForDedupe).filter(Boolean))];
+}
+
+function isSpecificLabel(value: string, generic: Set<string>): boolean {
+  const v = value.trim().toLowerCase();
+  return Boolean(v) && !generic.has(v);
+}
+
+function normalizeContactNumbers(input: unknown): string[] | undefined {
+  if (!Array.isArray(input)) return undefined;
+  const normalized = [
+    ...new Set(
+      input
+        .map((value) => String(value).trim())
+        .filter(Boolean),
+    ),
+  ];
+  return normalized.length > 0 ? normalized : undefined;
+}
+
 function normalizeQueueItem(input: Partial<QueueItem>): QueueItem | null {
   const company = typeof input.company === 'string' ? input.company.trim() : '';
   const role = typeof input.role === 'string' ? input.role.trim() : '';
@@ -17,6 +96,8 @@ function normalizeQueueItem(input: Partial<QueueItem>): QueueItem | null {
       ? (input.status as QueueStatus)
       : 'pending',
     email: typeof input.email === 'string' ? input.email.trim() : undefined,
+    phoneNumbers: normalizeContactNumbers(input.phoneNumbers),
+    whatsappNumbers: normalizeContactNumbers(input.whatsappNumbers),
     applyUrl: typeof input.applyUrl === 'string' ? input.applyUrl.trim() : undefined,
     applyUrls: Array.isArray(input.applyUrls)
       ? input.applyUrls.map((u) => String(u).trim()).filter(Boolean)
@@ -25,7 +106,7 @@ function normalizeQueueItem(input: Partial<QueueItem>): QueueItem | null {
         : undefined,
     company,
     role,
-    description: typeof input.description === 'string' ? input.description : '',
+    description: resolveQueueDescription(input.description),
     sourceUrl,
     resumeId: typeof input.resumeId === 'string' ? input.resumeId : undefined,
     createdAt: typeof input.createdAt === 'string' ? input.createdAt : now,
@@ -60,18 +141,77 @@ async function saveQueueList(items: QueueItem[]): Promise<QueueItem[]> {
 
 export function isQueueDuplicate(
   items: QueueItem[],
-  candidate: { email?: string; company: string; role: string; sourceUrl: string },
+  candidate: {
+    email?: string;
+    company: string;
+    role: string;
+    sourceUrl: string;
+    applyUrl?: string;
+    applyUrls?: string[];
+    phoneNumbers?: string[];
+    whatsappNumbers?: string[];
+  },
 ): boolean {
-  const email = candidate.email?.trim().toLowerCase();
+  const email = candidate.email?.trim().toLowerCase() ?? '';
   const company = candidate.company.trim().toLowerCase();
   const role = candidate.role.trim().toLowerCase();
-  const sourceUrl = candidate.sourceUrl.trim();
+  const companySpecific = isSpecificLabel(company, GENERIC_COMPANY);
+  const roleSpecific = isSpecificLabel(role, GENERIC_ROLE);
+  const candidateApply = collectApplyUrls(candidate);
+  const candidateWhatsApp = new Set(
+    (candidate.whatsappNumbers ?? []).map((number) => number.replace(/\D/g, '')).filter(Boolean),
+  );
+  const sourceUrl = normalizeUrlForDedupe(candidate.sourceUrl);
 
   return items.some((item) => {
-    if (sourceUrl && item.sourceUrl === sourceUrl) return true;
-    if (email && item.email?.toLowerCase() === email && company && item.company.toLowerCase() === company && role && item.role.toLowerCase() === role) {
+    const itemApply = collectApplyUrls(item);
+    if (candidateApply.length > 0 && itemApply.some((url) => candidateApply.includes(url))) {
       return true;
     }
+
+    const itemEmail = item.email?.trim().toLowerCase() ?? '';
+    const itemCompany = item.company.trim().toLowerCase();
+    const itemRole = item.role.trim().toLowerCase();
+    const itemSource = normalizeUrlForDedupe(item.sourceUrl);
+    const sameWhatsApp = (item.whatsappNumbers ?? []).some((number) =>
+      candidateWhatsApp.has(number.replace(/\D/g, '')),
+    );
+
+    if (
+      email &&
+      itemEmail &&
+      email === itemEmail &&
+      companySpecific &&
+      roleSpecific &&
+      itemCompany === company &&
+      itemRole === role
+    ) {
+      return true;
+    }
+
+    if (
+      sameWhatsApp &&
+      companySpecific &&
+      roleSpecific &&
+      itemCompany === company &&
+      itemRole === role
+    ) {
+      return true;
+    }
+
+    // Same feed post is not enough — one post often lists several jobs.
+    if (
+      sourceUrl &&
+      itemSource &&
+      sourceUrl === itemSource &&
+      companySpecific &&
+      roleSpecific &&
+      itemCompany === company &&
+      itemRole === role
+    ) {
+      return true;
+    }
+
     return false;
   });
 }
@@ -79,6 +219,8 @@ export function isQueueDuplicate(
 export async function addQueueItem(input: {
   type: QueueItemType;
   email?: string;
+  phoneNumbers?: string[];
+  whatsappNumbers?: string[];
   applyUrl?: string;
   applyUrls?: string[];
   company: string;
@@ -95,6 +237,7 @@ export async function addQueueItem(input: {
 
   const item = normalizeQueueItem({
     ...input,
+    description: resolveQueueDescription(input.description),
     status: input.status ?? 'pending',
   });
   if (!item) return { item: null, duplicate: false };
@@ -125,8 +268,16 @@ export async function updateQueueItem(
 }
 
 export async function deleteQueueItem(id: string): Promise<void> {
+  await deleteQueueItems([id]);
+}
+
+export async function deleteQueueItems(ids: string[]): Promise<number> {
+  if (ids.length === 0) return 0;
+  const idSet = new Set(ids);
   const existing = await listQueue();
-  await saveQueueList(existing.filter((item) => item.id !== id));
+  const next = existing.filter((item) => !idSet.has(item.id));
+  await saveQueueList(next);
+  return existing.length - next.length;
 }
 
 export async function importQueueItems(
@@ -154,6 +305,10 @@ export async function importQueueItems(
           company: normalized.company,
           role: normalized.role,
           sourceUrl: normalized.sourceUrl,
+          applyUrl: normalized.applyUrl,
+          applyUrls: normalized.applyUrls,
+          phoneNumbers: normalized.phoneNumbers,
+          whatsappNumbers: normalized.whatsappNumbers,
         }),
     );
 

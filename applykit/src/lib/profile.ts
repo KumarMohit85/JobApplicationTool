@@ -5,6 +5,7 @@ import {
   type Profile,
 } from '@/types/profile';
 import { createId } from '@/lib/id';
+import { bankToCustomAnswers, mergeAnswerBanks, migrateCustomAnswers, normalizeAnswerBank } from '@/lib/answers';
 import { normalizeSkills } from '@/lib/skills';
 
 export function createDefaultPersonalInfo(): PersonalInfo {
@@ -29,6 +30,18 @@ export function createDefaultEasyApplyDefaults(): EasyApplyDefaults {
     willingToRelocate: 'Yes',
     expectedSalary: '',
     noticePeriod: 'Immediate',
+    workCountry: '',
+    earliestStartDate: '',
+    workArrangement: '',
+    howHeard: '',
+    knowAnyoneAtCompany: 'No',
+    visaType: '',
+    currentCompany: '',
+    currentTitle: '',
+    eeoGender: 'Decline to self-identify',
+    eeoRace: 'Decline to self-identify',
+    eeoVeteran: 'Decline to self-identify',
+    eeoDisability: 'Decline to self-identify',
     customAnswers: {},
   };
 }
@@ -42,6 +55,7 @@ export function createDefaultProfile(): Profile {
     experience: [],
     education: [],
     easyApplyDefaults: createDefaultEasyApplyDefaults(),
+    answerBank: [],
     updatedAt: new Date().toISOString(),
   };
 }
@@ -67,6 +81,15 @@ export function normalizeProfile(input: Partial<Profile> | null | undefined): Pr
     return base;
   }
 
+  const customAnswers = {
+    ...base.easyApplyDefaults.customAnswers,
+    ...(input.easyApplyDefaults?.customAnswers ?? {}),
+  };
+  const answerBank = mergeAnswerBanks(
+    normalizeAnswerBank(input.answerBank),
+    migrateCustomAnswers(customAnswers),
+  );
+
   return {
     version: 1,
     personal: mergePersonal(input.personal ?? {}, base.personal),
@@ -77,11 +100,9 @@ export function normalizeProfile(input: Partial<Profile> | null | undefined): Pr
     easyApplyDefaults: {
       ...base.easyApplyDefaults,
       ...(input.easyApplyDefaults ?? {}),
-      customAnswers: {
-        ...base.easyApplyDefaults.customAnswers,
-        ...(input.easyApplyDefaults?.customAnswers ?? {}),
-      },
+      customAnswers: bankToCustomAnswers(answerBank),
     },
+    answerBank,
     updatedAt: new Date().toISOString(),
   };
 }

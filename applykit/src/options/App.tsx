@@ -7,6 +7,7 @@ import { ResumesTab } from '@/components/options/ResumesTab';
 import { ExperienceTab } from '@/components/options/ExperienceTab';
 import { EducationTab } from '@/components/options/EducationTab';
 import { EasyApplyTab } from '@/components/options/EasyApplyTab';
+import { AnswersTab } from '@/components/options/AnswersTab';
 import { ActivityLogTab } from '@/components/options/ActivityLogTab';
 import { BackupTab } from '@/components/options/BackupTab';
 import { QueueTab } from '@/components/options/QueueTab';
@@ -21,6 +22,7 @@ type TabId =
   | 'experience'
   | 'education'
   | 'easyApply'
+  | 'answers'
   | 'queue'
   | 'activity'
   | 'backup'
@@ -34,6 +36,7 @@ const tabs: { id: TabId; label: string; icon: string }[] = [
   { id: 'experience', label: 'Experience', icon: '💼' },
   { id: 'education', label: 'Education', icon: '🎓' },
   { id: 'easyApply', label: 'Easy Apply', icon: '⚙️' },
+  { id: 'answers', label: 'Answers', icon: '🗂️' },
   { id: 'queue', label: 'Mail queue', icon: '📋' },
   { id: 'activity', label: 'Activity log', icon: '📊' },
   { id: 'backup', label: 'Backup', icon: '💾' },
@@ -144,6 +147,7 @@ export default function OptionsApp() {
               {activeTab === 'easyApply' ? (
                 <EasyApplyTab profile={profile} onChange={handleChange} disabled={disabled} />
               ) : null}
+              {activeTab === 'answers' ? <AnswersTab /> : null}
               {activeTab === 'queue' ? <QueueTab /> : null}
               {activeTab === 'activity' ? <ActivityLogTab /> : null}
               {activeTab === 'backup' ? (

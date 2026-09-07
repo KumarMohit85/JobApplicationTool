@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { JobContext } from '@/types/job';
 import { parseHiringPost, isHiringText, type ParsedJobEntry } from '@/lib/post-parser';
-import { addQueueItem } from '@/lib/queue';
+import { addQueueItem, resolveQueueDescription } from '@/lib/queue';
 import { Button, StatusBanner } from '@/components/ui';
 
 const SOURCE_LABELS: Record<JobContext['source'], string> = {
@@ -80,13 +80,18 @@ export function ContextTab({
 
     for (const job of parsedJobs) {
       const { item, duplicate } = await addQueueItem({
-        type: job.email ? 'linkedin_mail' : 'job_scan',
+        type:
+          job.email || job.whatsappNumbers.length > 0 || job.phoneNumbers.length > 0
+            ? 'linkedin_mail'
+            : 'job_scan',
         email: job.email || undefined,
+        phoneNumbers: job.phoneNumbers,
+        whatsappNumbers: job.whatsappNumbers,
         applyUrl: job.applyUrl || undefined,
         applyUrls: job.applyUrls.length > 0 ? job.applyUrls : undefined,
         company: job.company,
         role: job.role,
-        description: job.description,
+        description: resolveQueueDescription(job.description, context?.description),
         sourceUrl: job.sourceUrl || context?.url || '',
       });
       if (duplicate) dupes++;
@@ -105,13 +110,18 @@ export function ContextTab({
 
   const handleQueueSingle = async (job: ParsedJobEntry) => {
     const { item: _item, duplicate } = await addQueueItem({
-      type: job.email ? 'linkedin_mail' : 'job_scan',
+      type:
+        job.email || job.whatsappNumbers.length > 0 || job.phoneNumbers.length > 0
+          ? 'linkedin_mail'
+          : 'job_scan',
       email: job.email || undefined,
+      phoneNumbers: job.phoneNumbers,
+      whatsappNumbers: job.whatsappNumbers,
       applyUrl: job.applyUrl || undefined,
       applyUrls: job.applyUrls.length > 0 ? job.applyUrls : undefined,
       company: job.company,
       role: job.role,
-      description: job.description,
+      description: resolveQueueDescription(job.description, context?.description),
       sourceUrl: job.sourceUrl || context?.url || '',
     });
     setQueueStatus({
@@ -139,6 +149,10 @@ export function ContextTab({
           Add selection
         </Button>
       </div>
+      <p className="text-[11px] text-slate-500">
+        Highlight text on the page, then Add selection. A later highlight replaces the previous one
+        (it does not append).
+      </p>
 
       {error ? <StatusBanner message={error} tone="info" /> : null}
       {queueStatus ? (
@@ -218,6 +232,15 @@ export function ContextTab({
                           {job.email ? (
                             <p className="text-xs text-slate-600">📧 {job.email}</p>
                           ) : null}
+                          {job.whatsappNumbers.length > 0 ? (
+                            <p className="text-xs text-emerald-700">
+                              WhatsApp: {job.whatsappNumbers.join(', ')}
+                            </p>
+                          ) : job.phoneNumbers.length > 0 ? (
+                            <p className="text-xs text-slate-600">
+                              Phone: {job.phoneNumbers.join(', ')}
+                            </p>
+                          ) : null}
                         </div>
                         <button
                           type="button"
@@ -247,7 +270,7 @@ export function ContextTab({
                             </a>
                           ))}
                         </div>
-                      ) : !job.email ? (
+                      ) : !job.email && job.phoneNumbers.length === 0 ? (
                         <p className="text-xs text-slate-400">No direct link or contact</p>
                       ) : null}
                     </div>

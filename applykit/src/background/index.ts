@@ -21,11 +21,18 @@ import {
   pullQueueFromRepo,
   getGitHubUsername,
 } from '@/lib/github-repo-sync';
-import { parseHiringPost, type ParsedJobEntry } from '@/lib/post-parser';
+import {
+  extractContactNumbers,
+  parseHiringPost,
+  type ParsedJobEntry,
+} from '@/lib/post-parser';
 import { getProfile, saveProfile } from '@/lib/profile';
+import { upsertAnswer } from '@/lib/answers';
+import { callGeminiFillFields } from '@/lib/ai/fill-fields';
 import { importQueueItems, listQueue } from '@/lib/queue';
 import type { Profile } from '@/types/profile';
 import type { QueueItem } from '@/types/queue';
+import type { ScannedField } from '@/types/answers';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -84,14 +91,17 @@ Strict Requirements:
 1. Extract exact "company" name for each job.
 2. Extract exact "role" or job title.
 3. Extract recruiter/contact "email" if present (otherwise empty "").
-4. Extract direct apply links into "applyUrls" array (ignore WhatsApp group links, Telegram, YouTube, and interview prep kit links).
-5. Extract a concise "description" summarizing job requirements, location, experience, and salary/CTC.
-6. Output ONLY a valid JSON array matching this structure:
+4. Extract contact phone numbers into "phoneNumbers" and numbers explicitly used for WhatsApp applications into "whatsappNumbers".
+5. Extract direct apply links into "applyUrls" array (ignore WhatsApp group links, Telegram, YouTube, and interview prep kit links).
+6. Preserve the useful job details in "description": experience, location, work mode, requirements, expectations/responsibilities, and how to apply. Do not reduce it to only a one-line summary.
+7. Output ONLY a valid JSON array matching this structure:
 [
   {
     "company": "Company Name",
     "role": "Role Title",
     "email": "email@example.com",
+    "phoneNumbers": ["9876543210"],
+    "whatsappNumbers": ["9876543210"],
     "applyUrls": ["https://..."],
     "description": "Job details summary"
   }
@@ -135,6 +145,7 @@ ${rawText}
       }
 
       if (Array.isArray(parsedArray) && parsedArray.length > 0) {
+        const localContacts = extractContactNumbers(rawText);
         const jobs: ParsedJobEntry[] = parsedArray.map((item) => {
           const obj = item as Partial<ParsedJobEntry>;
           const urls: string[] = Array.isArray(obj.applyUrls)
@@ -147,9 +158,25 @@ ${rawText}
             company: String(obj.company || 'Hiring Company').trim(),
             role: String(obj.role || 'Open Position').trim(),
             email: String(obj.email || '').trim().toLowerCase(),
+            phoneNumbers: [
+              ...new Set([
+                ...(Array.isArray(obj.phoneNumbers)
+                  ? obj.phoneNumbers.map(String).map((v) => v.trim()).filter(Boolean)
+                  : []),
+                ...localContacts.phoneNumbers,
+              ]),
+            ],
+            whatsappNumbers: [
+              ...new Set([
+                ...(Array.isArray(obj.whatsappNumbers)
+                  ? obj.whatsappNumbers.map(String).map((v) => v.trim()).filter(Boolean)
+                  : []),
+                ...localContacts.whatsappNumbers,
+              ]),
+            ],
             applyUrl: urls[0] || '',
             applyUrls: urls,
-            description: String(obj.description || rawText.slice(0, 1000)).trim(),
+            description: String(obj.description || rawText).trim().slice(0, 8000),
             sourceUrl,
           };
         });
@@ -349,32 +376,80 @@ chrome.runtime.onInstalled.addListener(() => {
 async function handleSaveCustomAnswer(
   question: string,
   answer: string,
+  siteHint?: string,
+  source?: 'learned' | 'user_confirmed' | 'ai_suggested' | 'settings',
 ): Promise<{ ok: boolean }> {
   const profile = await getProfile();
-  const existingAnswers = profile.easyApplyDefaults.customAnswers || {};
-
   const cleanKey = question.trim();
-  if (!cleanKey || !answer.trim()) return { ok: false };
+  const cleanAnswer = answer.trim();
+  if (!cleanKey || !cleanAnswer) return { ok: false };
 
-  if (existingAnswers[cleanKey] === answer.trim()) {
-    return { ok: true };
-  }
+  const bank = upsertAnswer(profile.answerBank ?? [], cleanKey, cleanAnswer, {
+    source: source ?? 'learned',
+    siteHint,
+    incrementUse: true,
+  });
 
   const updatedProfile: Profile = {
     ...profile,
-    easyApplyDefaults: {
-      ...profile.easyApplyDefaults,
-      customAnswers: {
-        ...existingAnswers,
-        [cleanKey]: answer.trim(),
-      },
-    },
+    answerBank: bank,
     updatedAt: new Date().toISOString(),
   };
 
   await saveProfile(updatedProfile);
   void handleCloudPush(updatedProfile);
   return { ok: true };
+}
+
+async function handleAiAnswerFields(fields: ScannedField[]) {
+  const settings = await loadAiSettings();
+  const profile = await getProfile();
+  return callGeminiFillFields(settings, profile, fields ?? [], profile.answerBank ?? []);
+}
+
+function waitForTabComplete(tabId: number, timeoutMs = 25000): Promise<void> {
+  return new Promise((resolve) => {
+    const check = (id: number, info: chrome.tabs.TabChangeInfo) => {
+      if (id === tabId && info.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(check);
+        resolve();
+      }
+    };
+    chrome.tabs.onUpdated.addListener(check);
+    void chrome.tabs.get(tabId).then((tab) => {
+      if (tab.status === 'complete') {
+        chrome.tabs.onUpdated.removeListener(check);
+        resolve();
+      }
+    });
+    setTimeout(() => {
+      chrome.tabs.onUpdated.removeListener(check);
+      resolve();
+    }, timeoutMs);
+  });
+}
+
+async function handleFillTabWhenReady(tabId: number): Promise<{ ok: boolean; error?: string }> {
+  await waitForTabComplete(tabId);
+  await new Promise((r) => setTimeout(r, 1600));
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ['src/content/index.ts'],
+    });
+  } catch {
+    // already present
+  }
+  await new Promise((r) => setTimeout(r, 400));
+  try {
+    await chrome.tabs.sendMessage(tabId, {
+      type: 'AUTOFILL',
+      request: { mode: 'form', useAi: true },
+    });
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Fill failed' };
+  }
 }
 
 // ─── Message router ───────────────────────────────────────────────────────────
@@ -392,6 +467,10 @@ chrome.runtime.onMessage.addListener(
       queueItems?: QueueItem[];
       question?: string;
       answer?: string;
+      siteHint?: string;
+      fields?: ScannedField[];
+      tabId?: number;
+      source?: 'learned' | 'user_confirmed' | 'ai_suggested' | 'settings';
     };
 
     if (msg.type === 'PING') {
@@ -415,7 +494,17 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (msg.type === 'SAVE_CUSTOM_ANSWER' && msg.question && msg.answer) {
-      void handleSaveCustomAnswer(msg.question, msg.answer).then(sendResponse);
+      void handleSaveCustomAnswer(msg.question, msg.answer, msg.siteHint, msg.source).then(sendResponse);
+      return true;
+    }
+
+    if (msg.type === 'AI_ANSWER_FIELDS' && msg.fields) {
+      void handleAiAnswerFields(msg.fields).then(sendResponse);
+      return true;
+    }
+
+    if (msg.type === 'FILL_TAB_WHEN_READY' && typeof msg.tabId === 'number') {
+      void handleFillTabWhenReady(msg.tabId).then(sendResponse);
       return true;
     }
 

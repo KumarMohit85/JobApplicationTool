@@ -3,12 +3,14 @@ import type { QueueItem, QueueStatus } from '@/types/queue';
 import type { Profile } from '@/types/profile';
 import { csvToQueueItems, downloadCsv, queueToCsv } from '@/lib/csv';
 import { appendActivityLog } from '@/lib/activity-log';
-import { deleteQueueItem, importQueueItems, listQueue, updateQueueItem } from '@/lib/queue';
+import { deleteQueueItem, deleteQueueItems, importQueueItems, listQueue, updateQueueItem } from '@/lib/queue';
 import { getProfile } from '@/lib/profile';
+import { startQueuedFormApply } from '@/lib/queue-apply';
 import { Button, StatusBanner } from '@/components/ui';
 import { EmailComposerModal } from './EmailComposerModal';
+import { allContactNumbers, hasWhatsAppContact, sendCvViaWhatsApp } from '@/lib/whatsapp-compose';
 
-type FilterType = 'all' | 'email' | 'link';
+type FilterType = 'all' | 'email' | 'link' | 'whatsapp';
 
 export function QueueTab() {
   const [items, setItems] = useState<QueueItem[]>([]);
@@ -19,6 +21,7 @@ export function QueueTab() {
   const [message, setMessage] = useState<{ text: string; tone: 'success' | 'error' | 'info' } | null>(
     null,
   );
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reload = async () => {
@@ -73,20 +76,64 @@ export function QueueTab() {
 
   const remove = async (id: string) => {
     await deleteQueueItem(id);
+    setSelectedIds((prev) => prev.filter((selected) => selected !== id));
     await reload();
     setMessage({ text: 'Item removed from queue (synced to cloud).', tone: 'info' });
   };
 
-  // Separate jobs into Email Apps vs Direct Link Apps
+  const removeSelected = async () => {
+    if (selectedIds.length === 0) return;
+    const count = await deleteQueueItems(selectedIds);
+    setSelectedIds([]);
+    await reload();
+    setMessage({
+      text: `Removed ${count} job${count === 1 ? '' : 's'} from the queue (synced to cloud).`,
+      tone: 'info',
+    });
+  };
+
+  const handleFillApply = async (item: QueueItem, url?: string) => {
+    const result = await startQueuedFormApply(item, url);
+    if (result.ok) {
+      setMessage({
+        text: `Opened apply page for ${item.company}. Fill runs automatically — review, edit any field, then Submit. Use Mark applied in the side panel when done.`,
+        tone: 'success',
+      });
+    } else {
+      setMessage({ text: result.error ?? 'Could not open apply page.', tone: 'error' });
+    }
+  };
+
+  // Separate jobs into Email Apps vs Direct Link Apps vs WhatsApp
   const emailItems = items.filter((i) => Boolean(i.email || i.type === 'linkedin_mail'));
   const linkItems = items.filter((i) => !i.email && Boolean(i.applyUrl || (i.applyUrls && i.applyUrls.length > 0)));
+  const whatsappItems = items.filter((i) => hasWhatsAppContact(i));
 
   const filteredItems =
     activeFilter === 'email'
       ? emailItems
       : activeFilter === 'link'
         ? linkItems
-        : items;
+        : activeFilter === 'whatsapp'
+          ? whatsappItems
+          : items;
+
+  const filteredIdSet = new Set(filteredItems.map((item) => item.id));
+  const selectedInView = selectedIds.filter((id) => filteredIdSet.has(id));
+  const allFilteredSelected =
+    filteredItems.length > 0 && selectedInView.length === filteredItems.length;
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const toggleSelectAllFiltered = () => {
+    if (allFilteredSelected) {
+      setSelectedIds((prev) => prev.filter((id) => !filteredIdSet.has(id)));
+      return;
+    }
+    setSelectedIds((prev) => [...new Set([...prev, ...filteredItems.map((item) => item.id)])]);
+  };
 
   return (
     <div className="space-y-4">
@@ -97,7 +144,7 @@ export function QueueTab() {
             📋 Application Queue ({items.length} total)
           </p>
           <p className="text-xs text-slate-500">
-            📧 Email Apps: {emailItems.length} | 🔗 Link Apps: {linkItems.length}
+            📧 Email Apps: {emailItems.length} | 🔗 Link Apps: {linkItems.length} | 💬 WhatsApp: {whatsappItems.length}
           </p>
         </div>
         <span className="inline-flex items-center gap-1 rounded bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-800">
@@ -106,6 +153,29 @@ export function QueueTab() {
       </div>
 
       {message ? <StatusBanner message={message.text} tone={message.tone} /> : null}
+
+      {selectedInView.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2">
+          <p className="text-sm font-medium text-indigo-900">
+            {selectedInView.length} selected
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              onClick={() => setSelectedIds((prev) => prev.filter((id) => !filteredIdSet.has(id)))}
+            >
+              Clear
+            </Button>
+            <button
+              type="button"
+              onClick={() => void removeSelected()}
+              className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+            >
+              Delete selected
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       {/* Filter Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -143,6 +213,17 @@ export function QueueTab() {
           >
             🔗 Direct Link Apps ({linkItems.length})
           </button>
+          <button
+            type="button"
+            onClick={() => setActiveFilter('whatsapp')}
+            className={`rounded-md px-3 py-1.5 text-xs font-semibold transition-colors ${
+              activeFilter === 'whatsapp'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            💬 WhatsApp ({whatsappItems.length})
+          </button>
         </div>
 
         {/* CSV Actions */}
@@ -179,6 +260,15 @@ export function QueueTab() {
           <table className="min-w-full text-left text-sm">
             <thead className="bg-slate-50 text-xs uppercase text-slate-500">
               <tr>
+                <th className="w-10 px-3 py-2.5">
+                  <input
+                    type="checkbox"
+                    checked={allFilteredSelected}
+                    onChange={toggleSelectAllFiltered}
+                    aria-label="Select all jobs in this view"
+                    className="rounded border-slate-300"
+                  />
+                </th>
                 <th className="px-3 py-2.5">Category</th>
                 <th className="px-3 py-2.5">Company</th>
                 <th className="px-3 py-2.5">Role</th>
@@ -192,6 +282,15 @@ export function QueueTab() {
                 const isEmailApp = Boolean(item.email || item.type === 'linkedin_mail');
                 return (
                   <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+                    <td className="px-3 py-2.5">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(item.id)}
+                        onChange={() => toggleSelected(item.id)}
+                        aria-label={`Select ${item.company} ${item.role}`}
+                        className="rounded border-slate-300"
+                      />
+                    </td>
                     <td className="px-3 py-2.5">
                       {isEmailApp ? (
                         <span className="inline-flex items-center gap-1 rounded bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-800">
@@ -272,30 +371,35 @@ export function QueueTab() {
                           </button>
                         ) : null}
 
-                        {item.applyUrls && item.applyUrls.length > 0 ? (
-                          item.applyUrls.map((url, uIdx) => (
-                            <a
-                              key={uIdx}
-                              href={url}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={() => void handleStatusChange(item.id, 'applied')}
-                              className="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700 shadow-sm"
-                            >
-                              🔗 Apply {item.applyUrls!.length > 1 ? `#${uIdx + 1}` : ''}
-                            </a>
-                          ))
-                        ) : item.applyUrl ? (
-                          <a
-                            href={item.applyUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={() => void handleStatusChange(item.id, 'applied')}
+                        {hasWhatsAppContact(item)
+                          ? allContactNumbers(item).map((num, nIdx) => (
+                              <button
+                                key={`wa-${item.id}-${nIdx}`}
+                                type="button"
+                                onClick={() => void sendCvViaWhatsApp(item, num)}
+                                className="rounded bg-green-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-green-700 shadow-sm"
+                                title={`Send CV via WhatsApp to ${num}`}
+                              >
+                                💬 {allContactNumbers(item).length > 1 ? `WA #${nIdx + 1}` : 'Send CV on WA'}
+                              </button>
+                            ))
+                          : null}
+
+                        {(item.applyUrls && item.applyUrls.length > 0
+                          ? item.applyUrls
+                          : item.applyUrl
+                            ? [item.applyUrl]
+                            : []
+                        ).map((url, uIdx, urls) => (
+                          <button
+                            key={`${item.id}-${uIdx}`}
+                            type="button"
+                            onClick={() => void handleFillApply(item, url)}
                             className="rounded bg-emerald-600 px-2 py-1 text-xs font-medium text-white hover:bg-emerald-700 shadow-sm"
                           >
-                            🔗 Apply
-                          </a>
-                        ) : null}
+                            Fill {urls.length > 1 ? `#${uIdx + 1}` : '& apply'}
+                          </button>
+                        ))}
 
                         <button
                           type="button"

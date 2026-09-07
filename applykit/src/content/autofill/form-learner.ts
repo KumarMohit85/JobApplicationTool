@@ -1,6 +1,7 @@
-/**
- * Extract clean, human-readable question text from a form control's label/legend/placeholder.
- */
+import { mapFieldKey } from './field-mapper';
+import { isCertifyQuestion } from '@/lib/answers';
+
+/** Extract clean, human-readable question text from a form control. */
 export function extractQuestionLabel(el: HTMLElement): string {
   const id = el.getAttribute('id');
   let labelText = '';
@@ -43,14 +44,10 @@ export function extractQuestionLabel(el: HTMLElement): string {
     if (parentLabel?.textContent) labelText = parentLabel.textContent;
   }
 
-  // Clean label: remove required asterisk *, extra whitespace
-  return labelText
-    .replace(/[*#]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  return labelText.replace(/[*#]/g, '').replace(/\s+/g, ' ').trim();
 }
 
-/** Check if field should be ignored for learning (passwords, hidden fields, etc.) */
+/** Check if field should be ignored for learning (passwords, hidden fields, identity). */
 function isSensitiveOrIgnored(el: HTMLElement): boolean {
   const type = (el.getAttribute('type') ?? '').toLowerCase();
   if (['password', 'hidden', 'submit', 'button', 'file'].includes(type)) return true;
@@ -61,10 +58,14 @@ function isSensitiveOrIgnored(el: HTMLElement): boolean {
     return true;
   }
 
+  const key = mapFieldKey(el);
+  if (key && ['firstName', 'lastName', 'fullName', 'email', 'phone'].includes(key)) {
+    return true;
+  }
+
   return false;
 }
 
-/** Get current value of a form control */
 function getElementValue(el: HTMLElement): string {
   if (el instanceof HTMLInputElement) {
     if (el.type === 'checkbox' || el.type === 'radio') {
@@ -73,7 +74,8 @@ function getElementValue(el: HTMLElement): string {
     return el.value.trim();
   }
   if (el instanceof HTMLSelectElement) {
-    return el.value.trim();
+    const text = el.selectedOptions[0]?.text?.trim();
+    return text || el.value.trim();
   }
   if (el instanceof HTMLTextAreaElement) {
     return el.value.trim();
@@ -81,10 +83,11 @@ function getElementValue(el: HTMLElement): string {
   return '';
 }
 
+const pending = new Map<string, number>();
+
 /**
- * Initialize automatic form input learning.
- * Listens for change and blur events on form inputs across the page.
- * When the user enters data, saves the question + answer pair for future autofill.
+ * Learn answers the user types on application forms (debounced).
+ * Identity fields and certify/password controls are ignored.
  */
 export function initFormLearner(): void {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -97,22 +100,29 @@ export function initFormLearner(): void {
     const question = extractQuestionLabel(target);
     const value = getElementValue(target);
 
-    // Ignore short questions (< 3 chars) or empty answers
-    if (!question || question.length < 3 || !value || value.length === 0) return;
+    if (!question || question.length < 8 || !value) return;
+    if (isCertifyQuestion(question)) return;
 
-    // Send to background to save custom answer & sync to cloud
-    try {
-      void chrome.runtime.sendMessage({
-        type: 'SAVE_CUSTOM_ANSWER',
-        question,
-        answer: value,
-      });
-    } catch {
-      // Extension context invalidated fallback
-    }
+    const prev = pending.get(question);
+    if (prev != null) window.clearTimeout(prev);
+    pending.set(
+      question,
+      window.setTimeout(() => {
+        pending.delete(question);
+        try {
+          void chrome.runtime.sendMessage({
+            type: 'SAVE_CUSTOM_ANSWER',
+            question,
+            answer: value,
+            siteHint: window.location.hostname,
+          });
+        } catch {
+          // Extension context invalidated
+        }
+      }, 700),
+    );
   };
 
-  // Attach global event delegation listeners for blur & change
   document.addEventListener('change', handleInputChange, true);
   document.addEventListener('blur', handleInputChange, true);
 }

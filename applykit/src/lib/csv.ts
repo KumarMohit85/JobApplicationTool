@@ -8,6 +8,10 @@ const CSV_HEADERS = [
   'company',
   'role',
   'description',
+  'applyUrl',
+  'applyUrls',
+  'phoneNumbers',
+  'whatsappNumbers',
   'sourceUrl',
   'resumeId',
   'createdAt',
@@ -21,10 +25,16 @@ function escapeCsvField(value: string): string {
   return value;
 }
 
+const PIPE_FIELDS = new Set<string>(['applyUrls', 'phoneNumbers', 'whatsappNumbers']);
+
 function rowToCsv(item: QueueItem): string {
   return CSV_HEADERS.map((header) => {
     const raw = item[header as keyof QueueItem];
-    return escapeCsvField(raw == null ? '' : String(raw));
+    if (raw == null) return escapeCsvField('');
+    if (PIPE_FIELDS.has(header) && Array.isArray(raw)) {
+      return escapeCsvField((raw as string[]).join('|'));
+    }
+    return escapeCsvField(String(raw));
   }).join(',');
 }
 
@@ -79,6 +89,9 @@ export function csvToQueueItems(csv: string): Partial<QueueItem>[] {
       record[header] = values[index] ?? '';
     });
 
+    const parsePipe = (val: string): string[] =>
+      val ? val.split('|').map((v) => v.trim()).filter(Boolean) : [];
+
     rows.push({
       id: record.id,
       type: record.type === 'linkedin_mail' ? 'linkedin_mail' : 'job_scan',
@@ -89,6 +102,10 @@ export function csvToQueueItems(csv: string): Partial<QueueItem>[] {
       company: record.company,
       role: record.role,
       description: record.description,
+      applyUrl: record.applyUrl || undefined,
+      applyUrls: parsePipe(record.applyUrls ?? ''),
+      phoneNumbers: parsePipe(record.phoneNumbers ?? ''),
+      whatsappNumbers: parsePipe(record.whatsappNumbers ?? ''),
       sourceUrl: record.sourceUrl,
       resumeId: record.resumeId,
       createdAt: record.createdAt,

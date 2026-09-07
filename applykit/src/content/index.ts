@@ -1,6 +1,8 @@
 import type { ExtensionMessage, ExtensionResponse } from '@/lib/job-context';
+import { emptyAutofillResult } from '@/lib/autofill-types';
 import { runAutofillOnPage } from './autofill/run';
-import { extractJobContextFromPage, getSelectedTextFromPage } from './extract';
+import { fillFieldByQuestion } from './autofill/engine';
+import { extractJobContextFromPage, getSelectedTextFromPage, clearRememberedSelection } from './extract';
 import { insertTextOnPage } from './insert';
 import { captureLinkedInPost } from './post-capture';
 import { initLinkedInPostOverlay } from './post-overlay';
@@ -32,7 +34,15 @@ chrome.runtime.onMessage.addListener(
     }
 
     if (message?.type === 'GET_SELECTED_TEXT') {
-      sendResponse({ type: 'SELECTED_TEXT', text: getSelectedTextFromPage() });
+      void getSelectedTextFromPage().then(({ text, at }) => {
+        sendResponse({ type: 'SELECTED_TEXT', text, at });
+      });
+      return true;
+    }
+
+    if (message?.type === 'CLEAR_PAGE_SELECTION') {
+      clearRememberedSelection();
+      sendResponse({ type: 'SELECTED_TEXT', text: '', at: 0 });
       return true;
     }
 
@@ -50,10 +60,16 @@ chrome.runtime.onMessage.addListener(
         .catch(() => {
           sendResponse({
             type: 'AUTOFILL_RESULT',
-            result: { filledCount: 0, skippedCount: 0, hints: [], errors: [] },
+            result: emptyAutofillResult(),
             error: 'Autofill failed on this page.',
           });
         });
+      return true;
+    }
+
+    if (message?.type === 'FILL_FIELD') {
+      const success = fillFieldByQuestion(document, message.question, message.value);
+      sendResponse({ type: 'FILL_FIELD_RESULT', success });
       return true;
     }
 

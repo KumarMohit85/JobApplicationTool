@@ -9,6 +9,7 @@ Chrome extension (**ApplyKit**) to autofill job applications, match resumes to j
 | Document | Purpose |
 |----------|---------|
 | [SETUP.md](./SETUP.md) | Clone → build → load in Chrome (new machine) |
+| [docs/](./docs/README.md) | Implemented features — how each one works in code |
 | [applykit/README.md](./applykit/README.md) | Product plan, MVP features, architecture |
 
 ## Quick start

@@ -1,4 +1,4 @@
-import { addQueueItem } from '@/lib/queue';
+import { addQueueItem, resolveQueueDescription } from '@/lib/queue';
 import { parseHiringPost } from '@/lib/post-parser';
 import { captureLinkedInPostFromElement, type LinkedInPostCapture } from './post-capture';
 
@@ -138,7 +138,9 @@ function showSaveModal(
         email,
         company: companyInput.value.trim() || 'Hiring Company',
         role: roleInput.value.trim() || 'Open Position',
-        description: capture.description,
+        description: resolveQueueDescription(capture.description),
+        phoneNumbers: capture.phoneNumbers,
+        whatsappNumbers: capture.whatsappNumbers,
         sourceUrl: capture.sourceUrl,
       });
 
@@ -196,7 +198,9 @@ async function quickSavePost(capture: LinkedInPostCapture): Promise<void> {
       email,
       company: capture.company || 'Hiring Company',
       role: capture.role || 'Open Position',
-      description: capture.description,
+      description: resolveQueueDescription(capture.description),
+      phoneNumbers: capture.phoneNumbers,
+      whatsappNumbers: capture.whatsappNumbers,
       sourceUrl: capture.sourceUrl,
     });
     if (duplicate) {
@@ -217,9 +221,12 @@ async function quickSavePost(capture: LinkedInPostCapture): Promise<void> {
       type: job.email ? 'linkedin_mail' : 'job_scan',
       email: job.email || undefined,
       applyUrl: job.applyUrl || undefined,
+      applyUrls: job.applyUrls?.length ? job.applyUrls : undefined,
       company: job.company,
       role: job.role,
-      description: job.description,
+      description: resolveQueueDescription(job.description, capture.description),
+      phoneNumbers: job.phoneNumbers?.length ? job.phoneNumbers : capture.phoneNumbers,
+      whatsappNumbers: job.whatsappNumbers?.length ? job.whatsappNumbers : capture.whatsappNumbers,
       sourceUrl: job.sourceUrl || capture.sourceUrl,
     });
     if (duplicate) dupes++;
@@ -331,6 +338,8 @@ function attachButtonToPost(post: Element): void {
         role: '',
         recruiterName: '',
         description: text.slice(0, 2000),
+        phoneNumbers: [],
+        whatsappNumbers: [],
         sourceUrl: window.location.href,
       });
       return;

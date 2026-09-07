@@ -4,6 +4,8 @@ import type { AutofillRequest, AutofillResult } from '@/lib/autofill-types';
 
 export type LinkedInPostCapturePayload = {
   emails: string[];
+  phoneNumbers: string[];
+  whatsappNumbers: string[];
   company: string;
   role: string;
   description: string;
@@ -14,16 +16,19 @@ export type ExtensionMessage =
   | { type: 'PING' }
   | { type: 'GET_JOB_CONTEXT' }
   | { type: 'GET_SELECTED_TEXT' }
+  | { type: 'CLEAR_PAGE_SELECTION' }
   | { type: 'INSERT_TEXT'; text: string }
   | { type: 'AUTOFILL'; request: AutofillRequest }
+  | { type: 'FILL_FIELD'; question: string; value: string }
   | { type: 'CAPTURE_LINKEDIN_POST' };
 
 export type ExtensionResponse =
   | { ok: true; version: string }
   | { type: 'JOB_CONTEXT'; context: JobContext | null; error?: string }
-  | { type: 'SELECTED_TEXT'; text: string }
+  | { type: 'SELECTED_TEXT'; text: string; at?: number }
   | { type: 'INSERT_TEXT_RESULT'; success: boolean; error?: string }
   | { type: 'AUTOFILL_RESULT'; result: AutofillResult; error?: string }
+  | { type: 'FILL_FIELD_RESULT'; success: boolean }
   | { type: 'LINKEDIN_POST_CAPTURE'; capture: LinkedInPostCapturePayload | null; error?: string };
 
 export function isRestrictedUrl(url: string | undefined): boolean {
@@ -72,6 +77,16 @@ export function mergeDescription(context: JobContext, extraText: string): JobCon
   };
 }
 
+/** True when this chunk is already the whole JD or a trailing / equal block. */
+export function descriptionAlreadyHasChunk(description: string, selected: string): boolean {
+  const d = description.trim();
+  const s = selected.trim();
+  if (!d || !s) return false;
+  if (d === s) return true;
+  if (d.endsWith(s)) return true;
+  return d.split(/\n\n+/).some((block) => block.trim() === s);
+}
+
 export async function saveLastJobContext(context: JobContext): Promise<void> {
   await chrome.storage.session.set({ [JOB_CONTEXT_STORAGE_KEY]: context });
 }
@@ -82,5 +97,14 @@ export async function loadLastJobContext(): Promise<JobContext | null> {
   if (!stored || typeof stored !== 'object') return null;
   return stored as JobContext;
 }
+
+export const PAGE_SELECTION_STORAGE_KEY = 'applykit_page_selection';
+export const PAGE_SELECTION_CONSUMED_AT_KEY = 'applykit_page_selection_consumed_at';
+
+export type PageSelectionPayload = {
+  text: string;
+  url: string;
+  at: number;
+};
 
 export { JOB_CONTEXT_STORAGE_KEY };

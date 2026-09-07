@@ -94,6 +94,103 @@ export function EasyApplyTab({ profile, onChange, disabled }: EasyApplyTabProps)
             onChange={(expectedSalary) => setDefault('expectedSalary', expectedSalary)}
           />
         </Field>
+        <Field label="Work / citizenship country">
+          <TextInput
+            disabled={disabled}
+            value={defaults.workCountry ?? ''}
+            placeholder="India"
+            onChange={(workCountry) => setDefault('workCountry', workCountry)}
+          />
+        </Field>
+        <Field label="Earliest start date">
+          <TextInput
+            disabled={disabled}
+            value={defaults.earliestStartDate ?? ''}
+            placeholder="YYYY-MM-DD or Immediate"
+            onChange={(earliestStartDate) => setDefault('earliestStartDate', earliestStartDate)}
+          />
+        </Field>
+        <Field label="Work arrangement">
+          <Select
+            disabled={disabled}
+            value={defaults.workArrangement ?? ''}
+            options={[
+              { value: '', label: 'Not set' },
+              { value: 'remote', label: 'Remote' },
+              { value: 'hybrid', label: 'Hybrid' },
+              { value: 'onsite', label: 'On-site' },
+            ]}
+            onChange={(v) => setDefault('workArrangement', v as typeof defaults.workArrangement)}
+          />
+        </Field>
+        <Field label="How did you hear about us (default)">
+          <TextInput
+            disabled={disabled}
+            value={defaults.howHeard ?? ''}
+            placeholder="LinkedIn"
+            onChange={(howHeard) => setDefault('howHeard', howHeard)}
+          />
+        </Field>
+        <Field label="Know anyone at the company">
+          <Select
+            disabled={disabled}
+            value={defaults.knowAnyoneAtCompany ?? 'No'}
+            options={yesNoOptions}
+            onChange={(v) => setDefault('knowAnyoneAtCompany', v as YesNo)}
+          />
+        </Field>
+        <Field label="Visa type (if any)">
+          <TextInput
+            disabled={disabled}
+            value={defaults.visaType ?? ''}
+            placeholder="Leave blank if citizen / not applicable"
+            onChange={(visaType) => setDefault('visaType', visaType)}
+          />
+        </Field>
+        <Field label="Current company (override)">
+          <TextInput
+            disabled={disabled}
+            value={defaults.currentCompany ?? ''}
+            placeholder="Uses latest experience if blank"
+            onChange={(currentCompany) => setDefault('currentCompany', currentCompany)}
+          />
+        </Field>
+        <Field label="Current title (override)">
+          <TextInput
+            disabled={disabled}
+            value={defaults.currentTitle ?? ''}
+            placeholder="Uses latest experience if blank"
+            onChange={(currentTitle) => setDefault('currentTitle', currentTitle)}
+          />
+        </Field>
+        <Field label="EEO gender (default)">
+          <TextInput
+            disabled={disabled}
+            value={defaults.eeoGender ?? ''}
+            onChange={(eeoGender) => setDefault('eeoGender', eeoGender)}
+          />
+        </Field>
+        <Field label="EEO race / ethnicity (default)">
+          <TextInput
+            disabled={disabled}
+            value={defaults.eeoRace ?? ''}
+            onChange={(eeoRace) => setDefault('eeoRace', eeoRace)}
+          />
+        </Field>
+        <Field label="EEO veteran (default)">
+          <TextInput
+            disabled={disabled}
+            value={defaults.eeoVeteran ?? ''}
+            onChange={(eeoVeteran) => setDefault('eeoVeteran', eeoVeteran)}
+          />
+        </Field>
+        <Field label="EEO disability (default)">
+          <TextInput
+            disabled={disabled}
+            value={defaults.eeoDisability ?? ''}
+            onChange={(eeoDisability) => setDefault('eeoDisability', eeoDisability)}
+          />
+        </Field>
       </div>
     </div>
   );

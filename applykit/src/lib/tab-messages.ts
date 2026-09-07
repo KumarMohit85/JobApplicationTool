@@ -1,5 +1,10 @@
-import type { ExtensionMessage, ExtensionResponse } from '@/lib/job-context';
-import { isRestrictedUrl, saveLastJobContext } from '@/lib/job-context';
+import type { ExtensionMessage, ExtensionResponse, PageSelectionPayload } from '@/lib/job-context';
+import {
+  isRestrictedUrl,
+  PAGE_SELECTION_CONSUMED_AT_KEY,
+  PAGE_SELECTION_STORAGE_KEY,
+  saveLastJobContext,
+} from '@/lib/job-context';
 import type { JobContext } from '@/types/job';
 
 function isJobContextResponse(
@@ -15,8 +20,16 @@ function isSelectedTextResponse(
 }
 
 async function getActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tab;
+  const queries: chrome.tabs.QueryInfo[] = [
+    { active: true, lastFocusedWindow: true },
+    { active: true, currentWindow: true },
+  ];
+  for (const query of queries) {
+    const [tab] = await chrome.tabs.query(query);
+    if (tab?.id && !isRestrictedUrl(tab.url)) return tab;
+  }
+  const tabs = await chrome.tabs.query({ active: true });
+  return tabs.find((tab) => tab.id && !isRestrictedUrl(tab.url));
 }
 
 /**
@@ -103,18 +116,60 @@ export async function fetchJobContextFromActiveTab(): Promise<{
   return { context: response.context };
 }
 
-export async function fetchSelectedTextFromActiveTab(): Promise<string> {
+function selectionMatchesTab(payload: PageSelectionPayload, tabUrl: string | undefined): boolean {
+  if (!payload.text.trim()) return false;
+  if (!tabUrl || !payload.url) return true;
+  try {
+    return new URL(payload.url).hostname === new URL(tabUrl).hostname;
+  } catch {
+    return payload.url === tabUrl;
+  }
+}
+
+export type FetchedSelection = {
+  text: string;
+  at: number;
+};
+
+export async function fetchSelectedTextFromActiveTab(): Promise<FetchedSelection> {
   const tab = await getActiveTab();
-  if (!tab?.id || isRestrictedUrl(tab.url)) return '';
+  if (!tab?.id || isRestrictedUrl(tab.url)) return { text: '', at: 0 };
+
+  const consumedResult = await chrome.storage.session.get(PAGE_SELECTION_CONSUMED_AT_KEY);
+  const consumedAt = (consumedResult[PAGE_SELECTION_CONSUMED_AT_KEY] as number | undefined) ?? 0;
 
   const response = await sendToTab<ExtensionResponse>(tab.id, {
     type: 'GET_SELECTED_TEXT',
   } satisfies ExtensionMessage);
 
-  if (isSelectedTextResponse(response)) {
-    return response.text;
+  let text = '';
+  let at = 0;
+  if (isSelectedTextResponse(response) && response.text.trim()) {
+    text = response.text.trim();
+    at = typeof response.at === 'number' ? response.at : 0;
   }
-  return '';
+
+  if (!text) {
+    const stored = await chrome.storage.session.get(PAGE_SELECTION_STORAGE_KEY);
+    const payload = stored[PAGE_SELECTION_STORAGE_KEY] as PageSelectionPayload | undefined;
+    if (payload && selectionMatchesTab(payload, tab.url)) {
+      text = payload.text.trim();
+      at = payload.at;
+    }
+  }
+
+  if (!text) return { text: '', at: 0 };
+  if (at > 0 && at <= consumedAt) return { text: '', at: 0 };
+  return { text, at };
+}
+
+export async function consumePageSelection(at: number): Promise<void> {
+  await chrome.storage.session.set({ [PAGE_SELECTION_CONSUMED_AT_KEY]: at || Date.now() });
+  await chrome.storage.session.remove(PAGE_SELECTION_STORAGE_KEY);
+  const tab = await getActiveTab();
+  if (tab?.id) {
+    void sendToTab(tab.id, { type: 'CLEAR_PAGE_SELECTION' } satisfies ExtensionMessage);
+  }
 }
 
 export async function getActiveTabUrl(): Promise<string | undefined> {

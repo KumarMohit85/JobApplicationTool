@@ -1,5 +1,7 @@
 import type { AutofillValueMap } from '@/lib/autofill-values';
 import type { AutofillRequest, AutofillResult } from '@/lib/autofill-types';
+import type { AnswerEntry } from '@/types/answers';
+import { emptyAutofillResult } from '@/lib/autofill-types';
 import { autofillRoot } from '../engine';
 import { findLinkedInEasyApplyModal } from '../linkedin-selectors';
 
@@ -7,18 +9,17 @@ export function autofillLinkedInEasyApply(
   values: AutofillValueMap,
   request: AutofillRequest,
   customAnswers: Record<string, string>,
+  answerBank: AnswerEntry[] = [],
 ): AutofillResult {
   const modal = findLinkedInEasyApplyModal();
   if (!modal) {
     return {
-      filledCount: 0,
-      skippedCount: 0,
-      hints: [],
+      ...emptyAutofillResult(),
       errors: ['Open the LinkedIn Easy Apply modal first, then click Fill Easy Apply.'],
     };
   }
 
-  const result = autofillRoot(modal, values, request, customAnswers);
+  const result = autofillRoot(modal, values, request, customAnswers, answerBank);
 
   if (request.resumeFile && !result.hints.some((h) => h.startsWith('Attached resume'))) {
     const fileInputs = modal.querySelectorAll<HTMLInputElement>('input[type="file"]');

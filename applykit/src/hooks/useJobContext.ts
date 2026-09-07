@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { JobContext } from '@/types/job';
 import { loadLastJobContext, saveLastJobContext } from '@/lib/job-context';
-import { fetchJobContextFromActiveTab, fetchSelectedTextFromActiveTab } from '@/lib/tab-messages';
+import {
+  consumePageSelection,
+  fetchJobContextFromActiveTab,
+  fetchSelectedTextFromActiveTab,
+  getActiveTabUrl,
+} from '@/lib/tab-messages';
 
 type UseJobContextState = {
   context: JobContext | null;
@@ -49,23 +54,26 @@ export function useJobContext(autoLoad = true): UseJobContextState {
   }, [autoLoad, refresh]);
 
   const appendSelection = useCallback(async (): Promise<boolean> => {
-    const selected = await fetchSelectedTextFromActiveTab();
+    const { text: selected, at } = await fetchSelectedTextFromActiveTab();
     if (!selected) {
-      setError('No text selected on the page. Highlight a job description or scroll to a post first.');
+      setError('No new highlight found. Select text on the page, then click Add selection.');
       return false;
     }
 
-    // Replace the context entirely with the new selection
-    const newContext: JobContext = {
-      title: 'Selected Job Post',
-      company: '',
-      description: selected,
-      url: '',
-      source: 'manual',
-      extractedAt: new Date().toISOString(),
-    };
-    void saveLastJobContext(newContext);
-    setContext(newContext);
+    const tabUrl = (await getActiveTabUrl()) ?? '';
+    setContext((prev) => {
+      const next: JobContext = {
+        title: prev?.title?.trim() ? prev.title : 'Selected Job Post',
+        company: prev?.company ?? '',
+        description: selected,
+        url: prev?.url || tabUrl,
+        source: 'manual',
+        extractedAt: new Date().toISOString(),
+      };
+      void saveLastJobContext(next);
+      return next;
+    });
+    await consumePageSelection(at);
     setError(null);
     return true;
   }, []);

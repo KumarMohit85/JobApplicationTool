@@ -112,7 +112,7 @@ export const FIELD_PATTERNS: FieldPattern[] = [
   },
   {
     key: 'noticePeriod',
-    patterns: [/\bnotice[\s_-]?period\b/i, /\bstart[\s_-]?date\b/i, /\bavailability\b/i],
+    patterns: [/\bnotice[\s_-]?period\b/i, /\bavailability\b/i],
   },
   {
     key: 'expectedSalary',
@@ -123,5 +123,53 @@ export const FIELD_PATTERNS: FieldPattern[] = [
       /\bdesired[\s_-]?salary\b/i,
       /\bpay[\s_-]?expectation\b/i,
     ],
+  },
+  {
+    key: 'workCountry',
+    patterns: [/\bcountry\b/i, /\bcitizenship\b/i, /\bnationality\b/i],
+  },
+  {
+    key: 'earliestStartDate',
+    patterns: [/\bearliest[\s_-]?start\b/i, /\bavailable[\s_-]?to[\s_-]?start\b/i, /\bstart[\s_-]?date\b/i],
+  },
+  {
+    key: 'workArrangement',
+    patterns: [/\bremote\b/i, /\bhybrid\b/i, /\bonsite\b/i, /\bon[\s_-]?site\b/i, /\bwork[\s_-]?arrangement\b/i],
+  },
+  {
+    key: 'howHeard',
+    patterns: [/\bhow[\s_-]?did[\s_-]?you[\s_-]?hear\b/i, /\bhow[\s_-]?did[\s_-]?you[\s_-]?find\b/i],
+  },
+  {
+    key: 'knowAnyoneAtCompany',
+    patterns: [/\bknow[\s_-]?anyone\b/i, /\breferral[\s_-]?employee\b/i, /\bemployee[\s_-]?referral\b/i],
+  },
+  {
+    key: 'visaType',
+    patterns: [/\bvisa[\s_-]?type\b/i, /\bvisa[\s_-]?status\b/i, /\bimmigration[\s_-]?status\b/i],
+  },
+  {
+    key: 'currentCompany',
+    patterns: [/\bcurrent[\s_-]?company\b/i, /\bcurrent[\s_-]?employer\b/i, /\bmost[\s_-]?recent[\s_-]?employer\b/i],
+  },
+  {
+    key: 'currentTitle',
+    patterns: [/\bcurrent[\s_-]?title\b/i, /\bcurrent[\s_-]?role\b/i, /\bcurrent[\s_-]?position\b/i],
+  },
+  {
+    key: 'eeoGender',
+    patterns: [/\bgender\b/i, /\bsex\b/i],
+  },
+  {
+    key: 'eeoRace',
+    patterns: [/\brace\b/i, /\bethnicity\b/i, /\bethnic[\s_-]?group\b/i],
+  },
+  {
+    key: 'eeoVeteran',
+    patterns: [/\bveteran\b/i],
+  },
+  {
+    key: 'eeoDisability',
+    patterns: [/\bdisability\b/i, /\bdisabled\b/i],
   },
 ];

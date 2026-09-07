@@ -1,4 +1,5 @@
 import type { AutofillRequest, AutofillResult, ResumeFilePayload } from '@/lib/autofill-types';
+import { emptyAutofillResult } from '@/lib/autofill-types';
 import type { ExtensionMessage, ExtensionResponse } from '@/lib/job-context';
 import { isRestrictedUrl } from '@/lib/job-context';
 import { getResumePdfBlob } from '@/lib/resumes';
@@ -34,8 +35,16 @@ export async function buildResumeFilePayload(
 }
 
 async function getActiveTab() {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  return tab;
+  const queries: chrome.tabs.QueryInfo[] = [
+    { active: true, lastFocusedWindow: true },
+    { active: true, currentWindow: true },
+  ];
+  for (const query of queries) {
+    const [tab] = await chrome.tabs.query(query);
+    if (tab?.id && !isRestrictedUrl(tab.url)) return tab;
+  }
+  const tabs = await chrome.tabs.query({ active: true });
+  return tabs.find((tab) => tab.id && !isRestrictedUrl(tab.url));
 }
 
 export async function runAutofillOnActiveTab(
@@ -44,13 +53,13 @@ export async function runAutofillOnActiveTab(
   const tab = await getActiveTab();
   if (!tab?.id) {
     return {
-      result: { filledCount: 0, skippedCount: 0, hints: [], errors: [] },
+      result: emptyAutofillResult(),
       error: 'No active tab found.',
     };
   }
   if (isRestrictedUrl(tab.url)) {
     return {
-      result: { filledCount: 0, skippedCount: 0, hints: [], errors: [] },
+      result: emptyAutofillResult(),
       error: 'Cannot autofill on this page (browser internal URL).',
     };
   }
@@ -63,7 +72,7 @@ export async function runAutofillOnActiveTab(
 
     if (!isAutofillResult(response)) {
       return {
-        result: { filledCount: 0, skippedCount: 0, hints: [], errors: [] },
+        result: emptyAutofillResult(),
         error: 'Content script did not respond. Refresh the page and try again.',
       };
     }
@@ -73,7 +82,7 @@ export async function runAutofillOnActiveTab(
     return { result: response.result };
   } catch {
     return {
-      result: { filledCount: 0, skippedCount: 0, hints: [], errors: [] },
+      result: emptyAutofillResult(),
       error: 'Could not reach this page. Refresh the tab or open a job application form.',
     };
   }
@@ -82,7 +91,7 @@ export async function runAutofillOnActiveTab(
 export function formatAutofillMessage(result: AutofillResult, error?: string): string {
   if (error) return error;
   if (result.errors.length > 0) return result.errors.join(' ');
-  if (result.filledCount === 0 && result.skippedCount === 0) {
+  if (result.filledCount === 0 && result.skippedCount === 0 && !(result.unmappedFields?.length)) {
     return 'No empty fields found to fill on this step.';
   }
   const parts = [`Filled ${result.filledCount} field${result.filledCount === 1 ? '' : 's'}.`];
@@ -92,5 +101,29 @@ export function formatAutofillMessage(result: AutofillResult, error?: string): s
   if (result.hints.length > 0) {
     parts.push(result.hints.join(' '));
   }
+  if (result.aiFilledCount) {
+    parts.push(`${result.aiFilledCount} from AI.`);
+  }
+  if (result.unmappedFields?.length) {
+    parts.push(`${result.unmappedFields.length} need your input.`);
+  }
   return parts.join(' ');
+}
+
+export async function fillFieldOnActiveTab(
+  question: string,
+  value: string,
+): Promise<boolean> {
+  const tab = await getActiveTab();
+  if (!tab?.id) return false;
+  try {
+    const response = (await chrome.tabs.sendMessage(tab.id, {
+      type: 'FILL_FIELD',
+      question,
+      value,
+    } satisfies ExtensionMessage)) as ExtensionResponse | undefined;
+    return Boolean(response && 'type' in response && response.type === 'FILL_FIELD_RESULT' && response.success);
+  } catch {
+    return false;
+  }
 }

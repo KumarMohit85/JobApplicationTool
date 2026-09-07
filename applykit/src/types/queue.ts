@@ -7,6 +7,8 @@ export type QueueItem = {
   type: QueueItemType;
   status: QueueStatus;
   email?: string;
+  phoneNumbers?: string[];
+  whatsappNumbers?: string[];
   applyUrl?: string;
   applyUrls?: string[];
   company: string;

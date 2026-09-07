@@ -1,11 +1,13 @@
 import type { AutofillValueMap } from '@/lib/autofill-values';
 import type { AutofillRequest, AutofillResult } from '@/lib/autofill-types';
+import type { AnswerEntry } from '@/types/answers';
 import { autofillRoot } from '../engine';
 
 export function autofillGenericForm(
   values: AutofillValueMap,
   request: AutofillRequest,
   customAnswers: Record<string, string>,
+  answerBank: AnswerEntry[] = [],
 ): AutofillResult {
   const form =
     document.querySelector<HTMLElement>('form[action*="apply"]') ??
@@ -13,5 +15,5 @@ export function autofillGenericForm(
     document.querySelector<HTMLElement>('form') ??
     document.body;
 
-  return autofillRoot(form, values, request, customAnswers);
+  return autofillRoot(form, values, request, customAnswers, answerBank);
 }
