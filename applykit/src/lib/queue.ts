@@ -1,4 +1,5 @@
 import { createId } from '@/lib/id';
+import { resolveJobRequirements } from '@/lib/post-parser';
 import { QUEUE_STORAGE_KEY, type QueueItem, type QueueItemType, type QueueStatus } from '@/types/queue';
 
 export const QUEUE_DESCRIPTION_MAX = 8000;
@@ -107,6 +108,7 @@ function normalizeQueueItem(input: Partial<QueueItem>): QueueItem | null {
     company,
     role,
     description: resolveQueueDescription(input.description),
+    requirements: resolveJobRequirements(input.requirements, input.description) || undefined,
     sourceUrl,
     resumeId: typeof input.resumeId === 'string' ? input.resumeId : undefined,
     createdAt: typeof input.createdAt === 'string' ? input.createdAt : now,
@@ -226,6 +228,7 @@ export async function addQueueItem(input: {
   company: string;
   role: string;
   description: string;
+  requirements?: string;
   sourceUrl: string;
   resumeId?: string;
   status?: QueueStatus;

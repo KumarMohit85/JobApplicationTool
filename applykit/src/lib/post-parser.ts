@@ -54,6 +54,8 @@ export type ParsedJobEntry = {
   applyUrl: string;
   applyUrls: string[];
   description: string;
+  /** Compact technical requirements + expectations for queue UI (not the full post). */
+  requirements: string;
   sourceUrl: string;
 };
 
@@ -192,6 +194,141 @@ export function extractContactNumbers(text: string): {
     phoneNumbers: [...new Set(phoneNumbers)],
     whatsappNumbers: [...new Set(whatsappNumbers)],
   };
+}
+
+export const JOB_REQUIREMENTS_MAX = 2500;
+
+const HEADER_DECORATION_RE = /^[\s*_#\-–—•●▪◦🔹📌📍💼📩📧📱🏢✅⭐️⭐]+/;
+
+function stripLineDecor(line: string): string {
+  return line.replace(HEADER_DECORATION_RE, '').trim();
+}
+
+function matchSectionHeader(
+  line: string,
+  pattern: RegExp,
+): { matched: boolean; rest: string } {
+  const t = stripLineDecor(line);
+  const withRest = t.match(new RegExp(`${pattern.source}\\s*[:\\-–—]\\s+(.+)$`, pattern.flags));
+  if (withRest?.[1]) {
+    return { matched: true, rest: withRest[1].trim() };
+  }
+  const headerOnly = new RegExp(`${pattern.source}\\s*:?\\s*$`, pattern.flags);
+  if (headerOnly.test(t)) {
+    return { matched: true, rest: '' };
+  }
+  return { matched: false, rest: '' };
+}
+
+const REQUIREMENTS_HEADER_RE =
+  /^(requirements?|must[\s-]?haves?|qualifications?|what we(?:['’]re| are) looking for|skills(?: required)?|technical (?:requirements?|skills)|you should have|nice to haves?)/i;
+
+const EXPECTATIONS_HEADER_RE =
+  /^(responsibilit(?:y|ies)|expectations?|what you(?:['’]ll| will) (?:do|be doing)|duties|key (?:responsibilities|tasks))/i;
+
+function isStopHeader(line: string): boolean {
+  const t = stripLineDecor(line);
+  if (/hashtag#|#hiring|#jobs?|#flutter|#tech/i.test(line)) return true;
+  return /^(how to apply|to apply|send (?:your )?(?:cv|resume)|apply (?:now|at|via|here)|location|address|about (?:us|the company)|benefits?|perks?|compensation|ctc|salary|please mention)\b/i.test(
+    t,
+  );
+}
+
+function isNoiseRequirementLine(line: string): boolean {
+  const t = stripLineDecor(line);
+  if (!t) return true;
+  if (/^https?:\/\//i.test(t)) return true;
+  if (EMAIL_RE.test(t) && t.length < 80) return true;
+  if (/whats\s*app|send your cv|mail (?:your )?(?:cv|resume)/i.test(t) && t.length < 80) return true;
+  return false;
+}
+
+function toBullet(line: string): string {
+  const cleaned = stripLineDecor(line).replace(/^\d+[.)]\s+/, '').trim();
+  return cleaned ? `• ${cleaned}` : '';
+}
+
+function formatRequirementSection(title: string, lines: string[]): string {
+  const bullets = lines.map(toBullet).filter(Boolean);
+  if (bullets.length === 0) return '';
+  return `${title}\n${bullets.join('\n')}`;
+}
+
+/**
+ * Pull only technical requirements and expectations/responsibilities from a hiring post.
+ * Drops apply instructions, hashtags, location, and promotional lines.
+ */
+export function extractJobRequirements(rawText: string): string {
+  const text = normalizeFancyUnicodeText(rawText).replace(/\r/g, '');
+  if (!text.trim()) return '';
+
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+  const requirements: string[] = [];
+  const expectations: string[] = [];
+  const fallbackBullets: string[] = [];
+  let section: 'idle' | 'requirements' | 'expectations' = 'idle';
+
+  for (const line of lines) {
+    if (isStopHeader(line)) {
+      section = 'idle';
+      continue;
+    }
+    const reqHeader = matchSectionHeader(line, REQUIREMENTS_HEADER_RE);
+    if (reqHeader.matched) {
+      section = 'requirements';
+      if (reqHeader.rest && !isNoiseRequirementLine(reqHeader.rest)) {
+        requirements.push(reqHeader.rest);
+      }
+      continue;
+    }
+    const expectHeader = matchSectionHeader(line, EXPECTATIONS_HEADER_RE);
+    if (expectHeader.matched) {
+      section = 'expectations';
+      if (expectHeader.rest && !isNoiseRequirementLine(expectHeader.rest)) {
+        expectations.push(expectHeader.rest);
+      }
+      continue;
+    }
+    if (isNoiseRequirementLine(line)) continue;
+
+    if (section === 'requirements') {
+      requirements.push(line);
+      continue;
+    }
+    if (section === 'expectations') {
+      expectations.push(line);
+      continue;
+    }
+
+    if (/^[•●▪◦🔹*-]\s+/.test(line) || /^\d+[.)]\s+/.test(line)) {
+      fallbackBullets.push(line);
+    }
+  }
+
+  const parts = [
+    formatRequirementSection('Requirements', requirements),
+    formatRequirementSection('Expectations', expectations),
+  ].filter(Boolean);
+
+  if (parts.length > 0) {
+    return parts.join('\n\n').slice(0, JOB_REQUIREMENTS_MAX);
+  }
+
+  const fallback = formatRequirementSection('Requirements', fallbackBullets.slice(0, 12));
+  return fallback.slice(0, JOB_REQUIREMENTS_MAX);
+}
+
+export function resolveJobRequirements(
+  requirements?: string,
+  ...fallbackTexts: Array<string | undefined>
+): string {
+  const explicit = (requirements ?? '').trim();
+  if (explicit) return explicit.slice(0, JOB_REQUIREMENTS_MAX);
+  for (const part of fallbackTexts) {
+    const extracted = extractJobRequirements(part ?? '');
+    if (extracted) return extracted;
+  }
+  return '';
 }
 
 function extractAllUrls(text: string): string[] {
@@ -405,6 +542,9 @@ export function parseHiringPost(rawText: string, sourceUrl: string): ParsedJobEn
         existing.whatsappNumbers = [
           ...new Set([...existing.whatsappNumbers, ...globalContacts.whatsappNumbers]),
         ];
+        if (!existing.requirements) {
+          existing.requirements = extractJobRequirements(b.text);
+        }
       }
       continue;
     }
@@ -419,6 +559,7 @@ export function parseHiringPost(rawText: string, sourceUrl: string): ParsedJobEn
       applyUrl: validUrls[0] || '',
       applyUrls: validUrls,
       description: b.text.slice(0, 8000),
+      requirements: extractJobRequirements(b.text),
       sourceUrl,
     });
   }
@@ -438,6 +579,7 @@ export function parseHiringPost(rawText: string, sourceUrl: string): ParsedJobEn
         applyUrl: validUrls[0] || '',
         applyUrls: validUrls,
         description: normalizedRaw.slice(0, 8000),
+        requirements: extractJobRequirements(normalizedRaw),
         sourceUrl,
       });
     }

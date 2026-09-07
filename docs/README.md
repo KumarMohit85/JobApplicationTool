@@ -87,7 +87,7 @@ Status is **implemented** unless noted. IDs in parentheses map to `applykit/READ
 | Mail/apply queue | `lib/queue.ts` | Types `linkedin_mail` and `job_scan` |
 | Bulk delete | Options Queue tab | Select rows (or select all in view) and delete together |
 | Dedup | `isQueueDuplicate()` | Same apply URL, or same email/company/role (not source post URL alone) |
-| Job description on queue rows | `QueueItem.description` | Full post/JD stored for AI mail subject/body |
+| Job description on queue rows | `QueueItem.requirements` + `JobRequirementsPanel` | Expand ▸ on a row for technical requirements/expectations; full `description` stays for AI mail only |
 | CSV export/import (F13) | `lib/csv.ts` | Quote-aware parser; merge by id or duplicate key |
 | Mail send assist (F14) | `lib/mail-send.ts`, Gmail content script | Open Gmail compose + download PDF |
 | Email composer modal | `EmailComposerModal.tsx` | Edit To/subject/body, pick resume, AI draft |

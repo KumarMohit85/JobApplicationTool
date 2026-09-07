@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import type { QueueItem, QueueStatus } from '@/types/queue';
 import type { Profile } from '@/types/profile';
 import { csvToQueueItems, downloadCsv, queueToCsv } from '@/lib/csv';
@@ -8,6 +8,7 @@ import { getProfile } from '@/lib/profile';
 import { startQueuedFormApply } from '@/lib/queue-apply';
 import { Button, StatusBanner } from '@/components/ui';
 import { EmailComposerModal } from './EmailComposerModal';
+import { JobRequirementsPanel } from './JobRequirementsPanel';
 import { allContactNumbers, hasWhatsAppContact, sendCvViaWhatsApp } from '@/lib/whatsapp-compose';
 
 type FilterType = 'all' | 'email' | 'link' | 'whatsapp';
@@ -22,6 +23,7 @@ export function QueueTab() {
     null,
   );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const reload = async () => {
@@ -133,6 +135,10 @@ export function QueueTab() {
       return;
     }
     setSelectedIds((prev) => [...new Set([...prev, ...filteredItems.map((item) => item.id)])]);
+  };
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   return (
@@ -269,6 +275,7 @@ export function QueueTab() {
                     className="rounded border-slate-300"
                   />
                 </th>
+                <th className="w-8 px-1 py-2.5" aria-label="Show requirements" />
                 <th className="px-3 py-2.5">Category</th>
                 <th className="px-3 py-2.5">Company</th>
                 <th className="px-3 py-2.5">Role</th>
@@ -280,8 +287,10 @@ export function QueueTab() {
             <tbody>
               {filteredItems.map((item) => {
                 const isEmailApp = Boolean(item.email || item.type === 'linkedin_mail');
+                const expanded = expandedIds.includes(item.id);
                 return (
-                  <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+                  <Fragment key={item.id}>
+                  <tr className="border-t border-slate-100 hover:bg-slate-50/50">
                     <td className="px-3 py-2.5">
                       <input
                         type="checkbox"
@@ -290,6 +299,21 @@ export function QueueTab() {
                         aria-label={`Select ${item.company} ${item.role}`}
                         className="rounded border-slate-300"
                       />
+                    </td>
+                    <td className="px-1 py-2.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(item.id)}
+                        aria-expanded={expanded}
+                        aria-label={
+                          expanded
+                            ? `Hide requirements for ${item.role}`
+                            : `Show requirements for ${item.role}`
+                        }
+                        className="rounded px-1.5 py-0.5 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                      >
+                        {expanded ? '▾' : '▸'}
+                      </button>
                     </td>
                     <td className="px-3 py-2.5">
                       {isEmailApp ? (
@@ -411,6 +435,14 @@ export function QueueTab() {
                       </div>
                     </td>
                   </tr>
+                  {expanded ? (
+                    <tr className="border-t border-slate-50 bg-slate-50/90">
+                      <td colSpan={8} className="px-6 py-3">
+                        <JobRequirementsPanel item={item} />
+                      </td>
+                    </tr>
+                  ) : null}
+                  </Fragment>
                 );
               })}
             </tbody>

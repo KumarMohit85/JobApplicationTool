@@ -144,7 +144,7 @@ Errors that mention API key / Options get a dedicated “add your key” message
 Not the same as `AI_GENERATE`. Background `handleAiParsePost(rawText, sourceUrl)`:
 
 - If AI disabled or no key → `parseHiringPost()` (`source: 'local'`)
-- Else a dedicated extract prompt: JSON **array** of `{ company, role, email, applyUrls, description }`; ignore WhatsApp/Telegram/YouTube/prep-kit links; `temperature: 0.1`
+- Else a dedicated extract prompt: JSON **array** of `{ company, role, email, applyUrls, description, requirements }`; ignore WhatsApp/Telegram/YouTube/prep-kit links; `requirements` is technical requirements + expectations only; `temperature: 0.1`
 - Parse whole text or a `[...]` substring
 - Map into `ParsedJobEntry`; default company/role if missing
 - On HTTP/JSON failure → local parser

@@ -225,6 +225,7 @@ async function quickSavePost(capture: LinkedInPostCapture): Promise<void> {
       company: job.company,
       role: job.role,
       description: resolveQueueDescription(job.description, capture.description),
+      requirements: job.requirements,
       phoneNumbers: job.phoneNumbers?.length ? job.phoneNumbers : capture.phoneNumbers,
       whatsappNumbers: job.whatsappNumbers?.length ? job.whatsappNumbers : capture.whatsappNumbers,
       sourceUrl: job.sourceUrl || capture.sourceUrl,

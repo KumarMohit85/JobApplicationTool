@@ -15,7 +15,9 @@ How hiring posts become queue rows, how CSV and Gmail work, and how activity is 
 | `status` | `pending` \| `sent` \| `applied` |
 | `email?` | Recruiter address |
 | `applyUrl?` / `applyUrls?` | Direct apply links (multi-link posts) |
-| `company`, `role`, `description` | Job text (description capped at 8000 chars — requirements/responsibilities kept verbatim) |
+| `company`, `role` | Job labels |
+| `description` | Full post/JD (up to 8000 chars) used internally for AI mail — **not shown in the queue table** |
+| `requirements?` | Compact technical requirements + expectations for the expandable queue row (up to 2500 chars) |
 | `phoneNumbers?` | Recruiter phone numbers (normalised digits, e.g. `"919737080195"`) |
 | `whatsappNumbers?` | Subset of phone numbers confirmed to be WhatsApp contacts |
 | `sourceUrl` | LinkedIn post or job URL |
@@ -36,7 +38,9 @@ A candidate is a duplicate only if:
 
 The same LinkedIn post URL alone is **not** a duplicate — one post often lists several jobs. Placeholder names like “Hiring Company” / “Open Position” are ignored for company/role matching.
 
-Each row stores a job `description` (up to 8000 characters). When extracting several jobs from one post, the full post/selection text is kept if the per-job summary is shorter, so Compose & Send / AI mail can use it.
+Each row stores a full `description` (up to 8000 characters) for AI/mail, and a separate `requirements` field with only technical requirements and expectations. The queue table does not dump the full post; click the ▸ control on a row to expand `JobRequirementsPanel`. Existing rows without `requirements` are filled from the stored description on read/write.
+
+When extracting several jobs from one post, the full post/selection text is kept in `description` if the per-job summary is shorter, so Compose & Send / AI mail can use it. `requirements` stays scoped to that job when the parser/AI extracted a per-job block.
 
 CRUD: `addQueueItem`, `updateQueueItem`, `deleteQueueItem`, `deleteQueueItems`, `importQueueItems` (added/updated/skipped counts), `replaceQueue`.
 
@@ -87,7 +91,8 @@ Used when AI is off or Gemini fails.
 6. Role: long `ROLE_PATTERNS` list then `Role: …` / `hiring for …`
 7. Apply URLs: http(s) minus social/junk (WhatsApp, YouTube, Instagram, and context words like `interview_kit`, `roadmap`)
 8. Fallback single row if any email or apply URL exists
-9. `isHiringText()` gates the side-panel extract UI
+9. `extractJobRequirements()` keeps only Requirements / Responsibilities (or similar) sections for the queue expand panel
+10. `isHiringText()` gates the side-panel extract UI
 
 ---
 
@@ -105,7 +110,8 @@ Popup **Save LinkedIn post** is the review-then-confirm path (single email row).
 
 - Counts: total, email apps, link apps, WhatsApp contacts
 - Filters: All / Send CV (email or `linkedin_mail`) / Direct link (`applyUrl` and no email) / **WhatsApp** (rows with phone or WhatsApp numbers)
-- Table: checkbox, category badge, company, role, mailto + apply links, **status `<select>`**, actions
+- Table: checkbox, expand control, category badge, company, role, mailto + apply links, **status `<select>`**, actions
+- **▸ / ▾** on each row expands `JobRequirementsPanel` — technical requirements and expectations only (not hashtags, apply instructions, or the full post)
 - **Select multiple** + **Delete selected** (also header “select all” for the current filter)
 - Status change to `sent` or `applied` appends activity log
 - **Compose & Send** (email rows) opens `EmailComposerModal` using the stored job `description` for AI subject/body
@@ -120,7 +126,7 @@ Popup **Save LinkedIn post** is the review-then-confirm path (single email row).
 
 `lib/csv.ts` — no Papa Parse.
 
-Headers: `id,type,status,email,company,role,description,applyUrl,applyUrls,phoneNumbers,whatsappNumbers,sourceUrl,resumeId,createdAt,updatedAt`
+Headers: `id,type,status,email,company,role,description,requirements,applyUrl,applyUrls,phoneNumbers,whatsappNumbers,sourceUrl,resumeId,createdAt,updatedAt`
 
 Array fields (`applyUrls`, `phoneNumbers`, `whatsappNumbers`) are pipe-separated (`|`) in CSV cells. Backward-compatible — old CSV files without these columns still import cleanly.
 

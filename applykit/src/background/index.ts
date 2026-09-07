@@ -24,6 +24,7 @@ import {
 import {
   extractContactNumbers,
   parseHiringPost,
+  resolveJobRequirements,
   type ParsedJobEntry,
 } from '@/lib/post-parser';
 import { getProfile, saveProfile } from '@/lib/profile';
@@ -94,7 +95,8 @@ Strict Requirements:
 4. Extract contact phone numbers into "phoneNumbers" and numbers explicitly used for WhatsApp applications into "whatsappNumbers".
 5. Extract direct apply links into "applyUrls" array (ignore WhatsApp group links, Telegram, YouTube, and interview prep kit links).
 6. Preserve the useful job details in "description": experience, location, work mode, requirements, expectations/responsibilities, and how to apply. Do not reduce it to only a one-line summary.
-7. Output ONLY a valid JSON array matching this structure:
+7. Put ONLY technical requirements and expectations/responsibilities into "requirements" as a short labelled block (Requirements / Expectations). Do not include hashtags, how-to-apply, emails, phone numbers, or location.
+8. Output ONLY a valid JSON array matching this structure:
 [
   {
     "company": "Company Name",
@@ -103,7 +105,8 @@ Strict Requirements:
     "phoneNumbers": ["9876543210"],
     "whatsappNumbers": ["9876543210"],
     "applyUrls": ["https://..."],
-    "description": "Job details summary"
+    "description": "Job details summary",
+    "requirements": "Requirements\\n• Flutter & Dart\\n\\nExpectations\\n• Build and maintain apps"
   }
 ]
 
@@ -177,6 +180,11 @@ ${rawText}
             applyUrl: urls[0] || '',
             applyUrls: urls,
             description: String(obj.description || rawText).trim().slice(0, 8000),
+            requirements: resolveJobRequirements(
+              typeof obj.requirements === 'string' ? obj.requirements : '',
+              String(obj.description || ''),
+              rawText,
+            ),
             sourceUrl,
           };
         });

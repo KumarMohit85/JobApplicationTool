@@ -92,6 +92,7 @@ export function ContextTab({
         company: job.company,
         role: job.role,
         description: resolveQueueDescription(job.description, context?.description),
+        requirements: job.requirements,
         sourceUrl: job.sourceUrl || context?.url || '',
       });
       if (duplicate) dupes++;
@@ -122,6 +123,7 @@ export function ContextTab({
       company: job.company,
       role: job.role,
       description: resolveQueueDescription(job.description, context?.description),
+      requirements: job.requirements,
       sourceUrl: job.sourceUrl || context?.url || '',
     });
     setQueueStatus({

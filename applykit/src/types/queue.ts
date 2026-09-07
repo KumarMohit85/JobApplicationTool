@@ -13,7 +13,10 @@ export type QueueItem = {
   applyUrls?: string[];
   company: string;
   role: string;
+  /** Full post/JD kept for AI mail — not shown in the queue table. */
   description: string;
+  /** Technical requirements and expectations for the expandable queue row. */
+  requirements?: string;
   sourceUrl: string;
   resumeId?: string;
   createdAt: string;
